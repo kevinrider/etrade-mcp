@@ -12,7 +12,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{name = "etrade-mcp contributors"}]
 classifiers = [
-  "Development Status :: 1 - Planning",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
@@ -21,7 +21,18 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Typing :: Typed",
 ]
-dependencies = []
+dependencies = [
+  "etrade-python>=1.1,<2",
+  "mcp>=2.3,<3",
+  "pydantic>=2.12,<3",
+  "pydantic-settings>=2.7,<3",
+  "typer>=0.20,<1",
+  "starlette>=0.48,<1",
+  "uvicorn>=0.31.1,<1",
+]
+
+[project.scripts]
+etrade-mcp = "etrade_mcp.cli:app"
 
 [project.optional-dependencies]
 dev = [
@@ -29,6 +40,11 @@ dev = [
   "pyright>=1.1.400,<2",
   "build>=1.2,<2",
   "twine>=6,<7",
+  "pytest>=8.3,<10",
+  "pytest-asyncio>=1,<2",
+  "pytest-cov>=6,<8",
+  "httpx>=0.28,<1",
+  "httpx2>=2.10,<3",
 ]
 
 [tool.hatch.version]
@@ -41,9 +57,10 @@ packages = ["src/etrade_mcp"]
 [tool.hatch.build.targets.sdist]
 core-metadata-version = "2.4"
 include = [
-  "/src", "/scripts", "/README.md", "/LICENSE",
+  "/src", "/scripts", "/tests", "/README.md", "/LICENSE",
   "/CONTRIBUTING.md", "/Makefile", "/pyproject.toml",
   "/uv.lock",
+  "/tool-coverage.json",
 ]
 
 [tool.ruff]
@@ -54,6 +71,12 @@ line-length = 100
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
 
 [tool.pyright]
-include = ["src", "scripts"]
+include = ["src", "scripts", "tests"]
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --cov=etrade_mcp --cov-branch --cov-report=term-missing --cov-fail-under=90"
