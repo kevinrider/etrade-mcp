@@ -40,7 +40,15 @@ def main() -> None:
     with zipfile.ZipFile(wheels[0]) as archive:
         check_contents(
             archive.namelist(),
-            {"etrade_mcp/__init__.py", "etrade_mcp/_version.py", "etrade_mcp/py.typed"},
+            {
+                "etrade_mcp/__init__.py",
+                "etrade_mcp/_version.py",
+                "etrade_mcp/py.typed",
+                "etrade_mcp/cli.py",
+                "etrade_mcp/server.py",
+                "etrade_mcp/http.py",
+                "etrade_mcp/config.py",
+            },
         )
     with tarfile.open(sources[0]) as archive:
         check_contents(
@@ -50,6 +58,10 @@ def main() -> None:
                 "src/etrade_mcp/_version.py",
                 "src/etrade_mcp/py.typed",
                 "scripts/check_artifacts.py",
+                "scripts/protocol_smoke.py",
+                "tool-coverage.json",
+                "tests/test_http.py",
+                "tests/test_cli.py",
                 "LICENSE",
                 "pyproject.toml",
                 "uv.lock",
@@ -73,8 +85,7 @@ print(f'Installed etrade-mcp {etrade_mcp.__version__} on Python {sys.version.spl
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
     environment.pop("PYTHONHOME", None)
-    # The repository is in planning status; use metadata rather than a second
-    # hard-coded version so every future artifact must match the source version.
+    # Compare artifact metadata against the single source version.
     namespace: dict[str, object] = {}
     exec((ROOT / "src/etrade_mcp/_version.py").read_text(), namespace)
     expected_version = str(namespace["__version__"])
@@ -99,6 +110,27 @@ print(f'Installed etrade-mcp {etrade_mcp.__version__} on Python {sys.version.spl
             )
             subprocess.run(
                 [str(python), "-I", "-c", probe], cwd=outside, env=environment, check=True
+            )
+            version_output = subprocess.check_output(
+                [str(python), "-I", "-m", "etrade_mcp", "--version"],
+                cwd=outside,
+                env=environment,
+                text=True,
+            )
+            assert version_output.strip() == expected_version
+            executable = venv / ("Scripts/etrade-mcp.exe" if os.name == "nt" else "bin/etrade-mcp")
+            assert (
+                subprocess.check_output(
+                    [str(executable), "--version"], cwd=outside, env=environment, text=True
+                ).strip()
+                == expected_version
+            )
+            subprocess.run(
+                [str(python), "-I", str(ROOT / "scripts/protocol_smoke.py")],
+                cwd=outside,
+                env=environment,
+                check=True,
+                timeout=60,
             )
             print(f"Verified {kind}: {artifact.name}", flush=True)
 

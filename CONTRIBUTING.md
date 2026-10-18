@@ -10,6 +10,7 @@ uv sync --extra dev --frozen
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pyright --pythonpath .venv/bin/python
+uv run --frozen pytest
 ```
 
 Use `uv run --frozen ruff format .` to apply formatting. When intentionally
@@ -33,7 +34,8 @@ uv run --frozen python scripts/check_artifacts.py
 
 Or run `make package-check`. The verification script checks wheel/source archive
 contents, installs each artifact into a separate temporary virtual environment,
-and checks imports, version metadata, and `py.typed` outside the checkout. It
+and checks imports, version metadata, `py.typed`, the CLI, and real discovery/
+invocation over stdio and authenticated loopback HTTP outside the checkout. It
 uses the invoking Python interpreter and uv, requires package-index access for
 source-build dependencies, and deletes its temporary environments on completion.
 It never publishes artifacts or contacts E*TRADE.
@@ -45,9 +47,13 @@ for package metadata.
 
 ## Implementation expectations
 
-Milestone 0 has no server behavior, runtime dependencies, command-line entry
-point, or placeholder tests. Add substantive tests with later implementation and
-enforce the planned 90% statement/branch coverage threshold then.
+Milestone 2 provides the server foundation and `server_status`. Brokerage tools
+and result caching follow in later milestones. The suite enforces at least 90%
+combined statement/branch coverage. Keep [tool-coverage.json](tool-coverage.json)
+accurate: implemented entries link to concrete `tests/file.py::test_function`
+selectors; planned entries must remain explicitly planned until implemented.
+Record request-field coverage when adding brokerage wrappers. A manifest test
+checks public client operations, request-model exports, and test links.
 
 Implement the requested milestone and verify its acceptance criteria before
 marking it complete. Keep runtime network code async and typed. Use only public
@@ -59,7 +65,7 @@ The host owns human approval, request/preview binding, execution history,
 duplicate prevention, and recovery. Do not add an adapter execution database,
 preparation records, or background monitoring. Preserve preview/placement
 separation and never add automatic mutation retries or resubmit a mutation to
-reconstruct a lost response. Future offline tests must use fake credentials and
+reconstruct a lost response. Offline tests must use fake credentials and
 mock broker HTTP responses, exercise the real client, and block accidental broker
 access. Keep stdout reserved for MCP protocol traffic during stdio serving;
 diagnostics must go to stderr.

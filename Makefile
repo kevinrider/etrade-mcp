@@ -1,4 +1,4 @@
-.PHONY: install lint format format-check type check build twine-check artifact-check package-check
+.PHONY: install lint format format-check type test check build twine-check artifact-check package-check
 
 install:
 	uv sync --extra dev --frozen
@@ -15,7 +15,10 @@ format-check:
 type:
 	uv run --frozen pyright --pythonpath .venv/bin/python
 
-check: lint format-check type
+test:
+	uv run --frozen pytest
+
+check: lint format-check type test
 
 build:
 	uv build --clear

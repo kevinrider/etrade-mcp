@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "client_requirement": "etrade-python>=1.1,<2",
+  "implemented": [
+    {
+      "tool": "server_status",
+      "client_operations": [
+        "session.load",
+        "session.status"
+      ],
+      "tests": [
+        "tests/test_server.py::test_status_protocol_and_strict_schema",
+        "tests/test_http.py::test_actual_http_discovery_invocation_and_concurrency",
+        "tests/test_cli.py::test_actual_stdio_cli_protocol_and_stdout"
+      ]
+    }
+  ],
+  "planned": [
+    {
+      "client_operation": "accounts.list",
+      "tool": "accounts_list",
+      "request_model": null,
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "accounts.get_balance",
+      "tool": "accounts_get_balance",
+      "request_model": "AccountBalanceRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "portfolio.get_positions",
+      "tool": "portfolio_get_positions",
+      "request_model": "PortfolioRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "transactions.list",
+      "tool": "transactions_list",
+      "request_model": "TransactionsRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "transactions.get",
+      "tool": "transactions_get",
+      "request_model": "TransactionDetailsRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "market.get_quote",
+      "tool": "market_get_quote",
+      "request_model": "QuotesRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "market.get_quotes",
+      "tool": "market_get_quotes",
+      "request_model": "QuotesRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "market.lookup_product",
+      "tool": "market_lookup_product",
+      "request_model": "ProductLookupRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "market.get_option_expirations",
+      "tool": "market_get_option_expirations",
+      "request_model": "OptionExpirationsRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "market.get_option_chain",
+      "tool": "market_get_option_chain",
+      "request_model": "OptionChainRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "orders.list",
+      "tool": "orders_list",
+      "request_model": "OrdersRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "orders.preview",
+      "tool": "orders_preview",
+      "request_model": "PreviewOrderRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "orders.place",
+      "tool": "orders_place",
+      "request_model": "PlaceOrderRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "orders.preview_change",
+      "tool": "orders_preview_change",
+      "request_model": "PreviewOrderRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "orders.place_change",
+      "tool": "orders_place_change",
+      "request_model": "PlaceOrderRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "orders.cancel",
+      "tool": "orders_cancel",
+      "request_model": "CancelOrderRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "alerts.list",
+      "tool": "alerts_list",
+      "request_model": "AlertsRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "alerts.get",
+      "tool": "alerts_get",
+      "request_model": "AlertDetailsRequest",
+      "status": "planned",
+      "tests": []
+    },
+    {
+      "client_operation": "alerts.delete",
+      "tool": "alerts_delete",
+      "request_model": null,
+      "status": "planned",
+      "tests": []
+    }
+  ],
+  "intentional_omissions": [
+    {
+      "client_operation": "portfolio.iter_positions",
+      "reason": "Use explicit single-page tools; no automatic aggregation."
+    },
+    {
+      "client_operation": "transactions.list_all",
+      "reason": "Use explicit single-page tools; no automatic aggregation."
+    },
+    {
+      "client_operation": "orders.list_all",
+      "reason": "Use explicit single-page tools; no automatic aggregation."
+    }
+  ],
+  "auth_policy": "OAuth login, verifier exchange, explicit renewal and revocation remain in the etrade CLI. Automatic client lifecycle management remains active.",
+  "note": "Test-only broker and mutation probes are not production tools or completed brokerage coverage. Request-field coverage will be added with Milestones 3\u20135."
+}
