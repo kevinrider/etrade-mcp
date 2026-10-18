@@ -59,7 +59,7 @@ def main() -> None:
                 "src/etrade_mcp/py.typed",
                 "scripts/check_artifacts.py",
                 "scripts/protocol_smoke.py",
-                "tool-coverage.json",
+                "README.md",
                 "tests/test_http.py",
                 "tests/test_cli.py",
                 "LICENSE",

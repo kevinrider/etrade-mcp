@@ -6,18 +6,23 @@ Python 3.11–3.14; loopback Streamable HTTP and stdio.
 **Alpha: Milestone 2 foundation.** The only production tool is `server_status`.
 Brokerage reads, previews, mutations, pagination, and large-result retrieval are
 planned. Enabling execution flags does not add tools that have not been implemented.
-[tool-coverage.json](tool-coverage.json) tracks implemented tools and their tests,
-planned client operations, request models, and intentional omissions.
+The [tool coverage table](#tool-coverage) tracks implemented tools and their
+tests, planned client operations, request models, and intentional omissions.
 
 ## Install and authenticate
 
-Until a release is published, install a locally built wheel:
+Until a release is published, install from a local checkout of this repository.
+With Python 3.11+ and uv installed, run from the repository root:
 
 ```sh
-uv build --clear
-uv tool install dist/etrade_mcp-0.1.0-py3-none-any.whl
+uv tool install .
 etrade-mcp --version
 ```
+
+uv builds the package and installs it in an isolated tool environment; no
+prebuilt wheel or `dist/` directory is needed. For development, use the setup
+commands in [CONTRIBUTING.md](CONTRIBUTING.md) and launch with
+`uv run etrade-mcp` instead.
 
 Provide `ETRADE_CONSUMER_KEY` and `ETRADE_CONSUMER_SECRET` through your protected
 process environment. They are required even when no access token is stored.
@@ -181,6 +186,43 @@ Mutation transport loss, malformed responses, and potentially ambiguous server
 errors are conservatively uncertain. Cancellation propagates to the SDK; a host
 that loses a mutation response must reconcile even when no error result arrives.
 These are foundation error contracts; no brokerage mutation tool ships yet.
+
+## Tool coverage
+
+Supported client dependency: `etrade-python>=1.1,<2`. Planned rows do not
+represent available tools. Test links open the file containing the named test.
+
+| Client operation | MCP tool | Status | Request model | Tests / notes |
+| --- | --- | --- | --- | --- |
+| `session.load`, `session.status` | `server_status` | Implemented | — | [test_status_protocol_and_strict_schema](tests/test_server.py)<br>[test_actual_http_discovery_invocation_and_concurrency](tests/test_http.py)<br>[test_actual_stdio_cli_protocol_and_stdout](tests/test_cli.py) |
+| `accounts.list` | `accounts_list` | Planned | — | — |
+| `accounts.get_balance` | `accounts_get_balance` | Planned | `AccountBalanceRequest` | — |
+| `portfolio.get_positions` | `portfolio_get_positions` | Planned | `PortfolioRequest` | — |
+| `transactions.list` | `transactions_list` | Planned | `TransactionsRequest` | — |
+| `transactions.get` | `transactions_get` | Planned | `TransactionDetailsRequest` | — |
+| `market.get_quote` | `market_get_quote` | Planned | `QuotesRequest` | — |
+| `market.get_quotes` | `market_get_quotes` | Planned | `QuotesRequest` | — |
+| `market.lookup_product` | `market_lookup_product` | Planned | `ProductLookupRequest` | — |
+| `market.get_option_expirations` | `market_get_option_expirations` | Planned | `OptionExpirationsRequest` | — |
+| `market.get_option_chain` | `market_get_option_chain` | Planned | `OptionChainRequest` | — |
+| `orders.list` | `orders_list` | Planned | `OrdersRequest` | — |
+| `orders.preview` | `orders_preview` | Planned | `PreviewOrderRequest` | — |
+| `orders.place` | `orders_place` | Planned | `PlaceOrderRequest` | — |
+| `orders.preview_change` | `orders_preview_change` | Planned | `PreviewOrderRequest` | — |
+| `orders.place_change` | `orders_place_change` | Planned | `PlaceOrderRequest` | — |
+| `orders.cancel` | `orders_cancel` | Planned | `CancelOrderRequest` | — |
+| `alerts.list` | `alerts_list` | Planned | `AlertsRequest` | — |
+| `alerts.get` | `alerts_get` | Planned | `AlertDetailsRequest` | — |
+| `alerts.delete` | `alerts_delete` | Planned | — | — |
+| `portfolio.iter_positions` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
+| `transactions.list_all` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
+| `orders.list_all` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
+
+OAuth login, verifier exchange, explicit renewal and revocation remain in the
+`etrade` CLI. Automatic client lifecycle management remains active.
+
+Test-only broker and mutation probes are not production tools or completed
+brokerage coverage. Request-field coverage will be added with Milestones 3–5.
 
 ## Development and verification
 

@@ -60,7 +60,6 @@ include = [
   "/src", "/scripts", "/tests", "/README.md", "/LICENSE",
   "/CONTRIBUTING.md", "/Makefile", "/pyproject.toml",
   "/uv.lock",
-  "/tool-coverage.json",
 ]
 
 [tool.ruff]
