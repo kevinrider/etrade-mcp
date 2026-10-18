@@ -1,0 +1,59 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "etrade-mcp"
+dynamic = ["version"]
+description = "An unofficial Python MCP adapter for the etrade-python E*TRADE client"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "etrade-mcp contributors"}]
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.11,<1",
+  "pyright>=1.1.400,<2",
+  "build>=1.2,<2",
+  "twine>=6,<7",
+]
+
+[tool.hatch.version]
+path = "src/etrade_mcp/_version.py"
+
+[tool.hatch.build.targets.wheel]
+core-metadata-version = "2.4"
+packages = ["src/etrade_mcp"]
+
+[tool.hatch.build.targets.sdist]
+core-metadata-version = "2.4"
+include = [
+  "/src", "/scripts", "/README.md", "/LICENSE",
+  "/CONTRIBUTING.md", "/Makefile", "/pyproject.toml",
+  "/uv.lock",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.pyright]
+include = ["src", "scripts"]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
