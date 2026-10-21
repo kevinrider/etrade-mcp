@@ -11,11 +11,14 @@ from mcp.types import (
     PROTOCOL_VERSION_META_KEY,
     UNSUPPORTED_PROTOCOL_VERSION,
 )
+from pydantic import SecretStr
+from starlette.testclient import TestClient
 from starlette.types import Message, Receive, Scope, Send
 
-from etrade_mcp.config import ConfigurationError, ServerConfig
+from etrade_mcp.config import ConfigurationError, ServerConfig, ServerSettings
 from etrade_mcp.http import BearerGate, ProtocolErrorSanitizer, create_http_app
 from etrade_mcp.server import create_server
+from tests.conftest import memory_client
 from tests.helpers import READ_TOOLS, TOKEN, authenticated_http, http_server
 from tests.test_server import payload
 
@@ -125,6 +128,94 @@ async def test_bearer_gate_duplicates_and_lifespan() -> None:
 def test_http_factory_rejects_stdio(config: ServerConfig) -> None:
     with pytest.raises(ConfigurationError):
         create_http_app(create_server(config), config.server)
+
+
+@pytest.mark.parametrize("port", [80, 8000])
+@pytest.mark.parametrize(
+    "host,authorities",
+    [
+        ("127.0.0.1", ("127.0.0.1", "localhost")),
+        ("::1", ("[::1]", "localhost")),
+        ("0:0:0:0:0:0:0:1", ("[0:0:0:0:0:0:0:1]", "[::1]", "localhost")),
+    ],
+)
+def test_http_accepts_default_ports_and_canonical_ipv6(
+    broker: ETradeSettings, host: str, authorities: tuple[str, ...], port: int
+) -> None:
+    settings = ServerSettings(host=host, port=port, http_bearer_token=SecretStr(TOKEN))
+    config = ServerConfig(server=settings, broker=broker)
+    server = create_server(config, client_factory=memory_client)
+    app = create_http_app(server, settings)
+    request = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+    headers = {"Authorization": "Bearer " + TOKEN, "Accept": "application/json, text/event-stream"}
+
+    # Drive the real lifespan without port binding. TestClient cannot parse
+    # IPv6 URLs, so generate the natural Host with the production HTTP client
+    # and carry it over an in-process localhost request instead.
+    natural_host = httpx2.Request("POST", f"http://{authorities[0]}:{port}/mcp").headers["host"]
+    with TestClient(app, base_url=f"http://localhost:{port}") as http:
+        natural = http.post("/mcp", headers={**headers, "Host": natural_host}, json=request)
+        assert natural.status_code == 200
+        assert {tool["name"] for tool in natural.json()["result"]["tools"]} == READ_TOOLS
+        allowed = [f"{authority}:{port}" for authority in authorities]
+        if port == 80:
+            allowed.extend(authorities)
+        for authority in allowed:
+            for origin in (None, f"http://{authority}"):
+                explicit = {**headers, "Host": authority}
+                if origin is not None:
+                    explicit["Origin"] = origin
+                response = http.post("/mcp", headers=explicit, json=request)
+                assert response.status_code == 200, (authority, origin, response.text)
+
+
+@pytest.mark.parametrize("port", [80, 8000])
+@pytest.mark.parametrize(
+    "host,authority,other",
+    [
+        ("127.0.0.1", "127.0.0.1", "127.0.0.2"),
+        ("::1", "[::1]", "127.0.0.1"),
+        ("0:0:0:0:0:0:0:1", "[::1]", "127.0.0.1"),
+    ],
+)
+def test_http_authority_normalization_keeps_access_restricted(
+    broker: ETradeSettings, host: str, authority: str, other: str, port: int
+) -> None:
+    settings = ServerSettings(host=host, port=port, http_bearer_token=SecretStr(TOKEN))
+    config = ServerConfig(server=settings, broker=broker)
+    server = create_server(config, client_factory=memory_client)
+    app = create_http_app(server, settings)
+    request = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+    headers = {"Authorization": "Bearer " + TOKEN, "Accept": "application/json, text/event-stream"}
+    denied = [
+        ({"Host": "evil.example"}, 421),
+        ({"Host": f"localhost.evil.example:{port}"}, 421),
+        ({"Host": f"{authority}:{port + 1}"}, 421),
+        ({"Host": f"localhost:{port + 1}"}, 421),
+        ({"Host": f"{other}:{port}"}, 421),
+        ({"Origin": f"https://{authority}:{port}"}, 403),
+        ({"Origin": f"http://{authority}:{port + 1}"}, 403),
+        ({"Origin": f"http://{other}:{port}"}, 403),
+        ({"Origin": f"http://localhost.evil.example:{port}"}, 403),
+    ]
+    if port != 80:
+        denied.extend(
+            [
+                ({"Host": authority}, 421),
+                ({"Origin": f"http://{authority}"}, 403),
+            ]
+        )
+    with TestClient(app, base_url=f"http://localhost:{port}") as http:
+        missing = http.post("/mcp", json=request)
+        assert missing.status_code == 401
+        assert missing.headers["WWW-Authenticate"] == "Bearer"
+        wrong = http.post(
+            "/mcp", headers={**headers, "Authorization": "Bearer wrong"}, json=request
+        )
+        assert wrong.status_code == 401
+        for override, expected in denied:
+            response = http.post("/mcp", headers={**headers, **override}, json=request)
+            assert response.status_code == expected, (override, response.text)
 
 
 @pytest.mark.parametrize("protocol", [None, "2025-11-25", "2026-07-28"])

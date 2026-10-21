@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+from ipaddress import ip_address
 from typing import cast
 
 from mcp.server import MCPServer
@@ -119,8 +120,15 @@ def create_http_app(server: MCPServer[Runtime], settings: ServerSettings) -> ASG
     if settings.transport != "streamable-http" or settings.http_bearer_token is None:
         raise ConfigurationError("HTTP transport configuration is required")
     host = settings.bind_host
-    authority = f"[{host}]" if ":" in host else host
-    authorities = [f"{authority}:{settings.bind_port}", f"localhost:{settings.bind_port}"]
+    # Clients serialize IPv6 addresses in compressed form and omit HTTP's
+    # default port. Retain the configured spelling for existing callers too.
+    addresses = {host, ip_address(host).compressed}
+    authorities = sorted(
+        {f"[{address}]" if ":" in address else address for address in addresses} | {"localhost"}
+    )
+    allowed_hosts = [f"{authority}:{settings.bind_port}" for authority in authorities]
+    if settings.bind_port == 80:
+        allowed_hosts.extend(authorities)
     app = server.streamable_http_app(
         streamable_http_path="/mcp",
         json_response=True,
@@ -128,8 +136,8 @@ def create_http_app(server: MCPServer[Runtime], settings: ServerSettings) -> ASG
         host=host,
         transport_security=TransportSecuritySettings(
             enable_dns_rebinding_protection=True,
-            allowed_hosts=authorities,
-            allowed_origins=[f"http://{name}" for name in authorities],
+            allowed_hosts=allowed_hosts,
+            allowed_origins=[f"http://{name}" for name in allowed_hosts],
         ),
     )
     return BearerGate(ProtocolErrorSanitizer(app), settings.http_bearer_token.get_secret_value())
