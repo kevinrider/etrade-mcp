@@ -3,9 +3,9 @@
 A typed, async MCP adapter over [etrade-python](https://pypi.org/project/etrade-python/).
 Python 3.11–3.14; loopback Streamable HTTP and stdio.
 
-**Alpha: Milestone 2 foundation.** The only production tool is `server_status`.
-Brokerage reads, previews, mutations, pagination, and large-result retrieval are
-planned. Enabling execution flags does not add tools that have not been implemented.
+**Alpha: Milestone 3.** All 13 client-supported brokerage reads and
+`server_status` are available over both transports. Previews and mutations
+remain planned. Enabling execution flags does not add unimplemented tools.
 The [tool coverage table](#tool-coverage) tracks implemented tools and their
 tests, planned client operations, request models, and intentional omissions.
 
@@ -102,18 +102,12 @@ is no adapter configuration file or automatic dotenv loading.
 | `ETRADE_MCP_ENABLE_ORDER_EXECUTION` | `false` | `--enable-order-execution` / `--no-enable-order-execution` |
 | `ETRADE_MCP_ENABLE_ALERT_DELETION` | `false` | `--enable-alert-deletion` / `--no-enable-alert-deletion` |
 | `ETRADE_MCP_TOOL_ALLOWLIST` | omitted: all capability-permitted tools | `--tool-allowlist` |
-| `ETRADE_MCP_RESULT_TTL_SECONDS` | `300` | environment only |
-| `ETRADE_MCP_INLINE_RESULT_BYTES` | `65536` | environment only |
-| `ETRADE_MCP_RESULT_CACHE_BYTES` | `33554432` | environment only |
-| `ETRADE_MCP_RESULT_CACHE_ENTRIES` | `128` | environment only |
 
 Broker settings also accept `ETRADE_REQUEST_TIMEOUT_SECONDS` (30) and
 `ETRADE_INACTIVITY_BUFFER_SECONDS` (300), managed by the client. Stdio rejects
 explicit HTTP host, port, or bearer settings, including inherited environment
 variables. Invalid settings and unknown tool names fail startup with sanitized
-errors. Cache settings reserve a contract for Milestone 3: positive TTL/entry
-count, byte limits at least 1024, and total budget at least the inline threshold.
-**No result cache is implemented yet.**
+errors.
 
 The allowlist is comma-separated exact names, for example
 `--tool-allowlist server_status`. An omitted allowlist permits all tools allowed
@@ -139,7 +133,7 @@ will not recover execution state. Strategy and scheduling stay outside the adapt
 ## Tool and result contract
 
 `server_status` takes `{}` and reports versions, environment/profile, transport,
-enabled tools/capabilities, reserved cache limits, and a local credential estimate.
+enabled tools/capabilities and a local credential estimate.
 It loads the configured keyring entry through public session APIs without making
 a broker request. Missing access credentials are allowed at startup and reported
 as `missing`; a keyring/backend failure produces a sanitized error. An `active`
@@ -168,8 +162,10 @@ Tool results contain matching JSON text and MCP `structuredContent`:
 ```
 
 Success has `ok: true`, typed `data`, and `error: null`; failures set MCP `isError`.
-Input models reject unknown fields. Decimal values serialize as decimal strings;
-future brokerage tools must preserve client request fields and monetary precision.
+Input models reject unknown fields at both the tool and nested request levels.
+Decimal values serialize as strings. Client response fields use their declared
+JSON aliases (for example, `accountPortfolio`, `nextPageNo`, and `transactionId`),
+matching the advertised output schemas. Responses preserve the complete client-modeled data for each broker page.
 Errors use static messages without raw input, exception text, or broker payloads.
 Numeric broker codes and bounded safe request identifiers may be preserved, with
 known secrets excluded. Errors distinguish:
@@ -185,7 +181,53 @@ known secrets excluded. Errors distinguish:
 Mutation transport loss, malformed responses, and potentially ambiguous server
 errors are conservatively uncertain. Cancellation propagates to the SDK; a host
 that loses a mutation response must reconcile even when no error result arrives.
-These are foundation error contracts; no brokerage mutation tool ships yet.
+No brokerage preview or mutation tool ships yet.
+
+## Read inputs and pagination
+
+Identifiers are top-level arguments; optional client request fields belong in a
+nested `request` object. Omit `request`, use `null`, or pass `{}` for client defaults.
+For example, `portfolio_get_positions` accepts:
+
+```json
+{
+  "account_id_key": "account-key",
+  "request": {"count": 25, "page_number": 1, "lots_required": true}
+}
+```
+
+Schemas advertise Python request field names. Client-supported aliases such as
+`htmlTags` and `fromDate` are also accepted; conflicting aliases and unknown
+fields are rejected. Monetary inputs such as option-chain `strike_price_near`
+must be decimal strings, for example `"100.125"`, rather than JSON numbers.
+Request date strings are passed to the client without conversion; preserve its
+supported broker date formats, such as `01012026` for transaction date filters.
+
+Every read returns one broker response. Pagination is explicit:
+
+- Portfolio responses preserve `accountPortfolio[].nextPageNo` and `next`;
+  request the next page with `request.page_number`.
+- Transaction responses preserve `marker`, `moreTransactions`, and other
+  continuation fields. Pass the marker in the next request. Broker markers are
+  inclusive, so boundary transactions can appear again. The adapter preserves
+  them; the client's omitted `list_all` iterator performs boundary deduplication.
+- Order responses preserve `marker` and `next`; pass `marker` to the next
+  `orders_list` call. Counts and filters remain under the caller's control.
+
+No read automatically fetches later broker pages or deduplicates records.
+
+## Response sizes
+
+Each successful read returns the complete client-modeled broker response in
+`data`. There is no adapter-imposed size cap, truncation, result cache, or separate
+retrieval step. MCP SDK, client, and model-context limits still apply; returning a
+complete response does not guarantee that every host can consume arbitrarily
+large results.
+
+Use broker pagination, counts, and filters to keep results manageable. For option
+chains, narrow the expiration, strike range, or chain type with the supported
+request fields. Broker pagination and filters remain explicit caller choices;
+the server does not fetch every page or silently rewrite requests.
 
 ## Tool coverage
 
@@ -195,24 +237,24 @@ represent available tools. Test links open the file containing the named test.
 | Client operation | MCP tool | Status | Request model | Tests / notes |
 | --- | --- | --- | --- | --- |
 | `session.load`, `session.status` | `server_status` | Implemented | — | [test_status_protocol_and_strict_schema](tests/test_server.py)<br>[test_actual_http_discovery_invocation_and_concurrency](tests/test_http.py)<br>[test_actual_stdio_cli_protocol_and_stdout](tests/test_cli.py) |
-| `accounts.list` | `accounts_list` | Planned | — | — |
-| `accounts.get_balance` | `accounts_get_balance` | Planned | `AccountBalanceRequest` | — |
-| `portfolio.get_positions` | `portfolio_get_positions` | Planned | `PortfolioRequest` | — |
-| `transactions.list` | `transactions_list` | Planned | `TransactionsRequest` | — |
-| `transactions.get` | `transactions_get` | Planned | `TransactionDetailsRequest` | — |
-| `market.get_quote` | `market_get_quote` | Planned | `QuotesRequest` | — |
-| `market.get_quotes` | `market_get_quotes` | Planned | `QuotesRequest` | — |
-| `market.lookup_product` | `market_lookup_product` | Planned | `ProductLookupRequest` | — |
-| `market.get_option_expirations` | `market_get_option_expirations` | Planned | `OptionExpirationsRequest` | — |
-| `market.get_option_chain` | `market_get_option_chain` | Planned | `OptionChainRequest` | — |
-| `orders.list` | `orders_list` | Planned | `OrdersRequest` | — |
+| `accounts.list` | `accounts_list` | Implemented | — | [Request mapping and field coverage](tests/test_reads.py) |
+| `accounts.get_balance` | `accounts_get_balance` | Implemented | `AccountBalanceRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `portfolio.get_positions` | `portfolio_get_positions` | Implemented | `PortfolioRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `transactions.list` | `transactions_list` | Implemented | `TransactionsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `transactions.get` | `transactions_get` | Implemented | `TransactionDetailsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `market.get_quote` | `market_get_quote` | Implemented | `QuotesRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `market.get_quotes` | `market_get_quotes` | Implemented | `QuotesRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `market.lookup_product` | `market_lookup_product` | Implemented | `ProductLookupRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `market.get_option_expirations` | `market_get_option_expirations` | Implemented | `OptionExpirationsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `market.get_option_chain` | `market_get_option_chain` | Implemented | `OptionChainRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `orders.list` | `orders_list` | Implemented | `OrdersRequest` | [Request mapping and field coverage](tests/test_reads.py) |
 | `orders.preview` | `orders_preview` | Planned | `PreviewOrderRequest` | — |
 | `orders.place` | `orders_place` | Planned | `PlaceOrderRequest` | — |
 | `orders.preview_change` | `orders_preview_change` | Planned | `PreviewOrderRequest` | — |
 | `orders.place_change` | `orders_place_change` | Planned | `PlaceOrderRequest` | — |
 | `orders.cancel` | `orders_cancel` | Planned | `CancelOrderRequest` | — |
-| `alerts.list` | `alerts_list` | Planned | `AlertsRequest` | — |
-| `alerts.get` | `alerts_get` | Planned | `AlertDetailsRequest` | — |
+| `alerts.list` | `alerts_list` | Implemented | `AlertsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
+| `alerts.get` | `alerts_get` | Implemented | `AlertDetailsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
 | `alerts.delete` | `alerts_delete` | Planned | — | — |
 | `portfolio.iter_positions` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
 | `transactions.list_all` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
@@ -221,8 +263,11 @@ represent available tools. Test links open the file containing the named test.
 OAuth login, verifier exchange, explicit renewal and revocation remain in the
 `etrade` CLI. Automatic client lifecycle management remains active.
 
-Test-only broker and mutation probes are not production tools or completed
-brokerage coverage. Request-field coverage will be added with Milestones 3–5.
+The cases in [tests/read_cases.py](tests/read_cases.py) enumerate every supported
+read request field. `test_read_request_fields_reach_real_client` verifies their
+final HTTP paths and query parameters using the real client;
+`test_request_cases_cover_public_client_fields` checks those cases against the
+public request models. Preview and mutation coverage follows in later milestones.
 
 ## Development and verification
 
