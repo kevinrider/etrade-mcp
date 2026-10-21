@@ -7,9 +7,9 @@ from etrade_python import ETradeSettings
 from mcp import Client
 
 from etrade_mcp.config import ConfigurationError, ServerConfig
-from etrade_mcp.http import BearerGate, caller_fingerprint, create_http_app
+from etrade_mcp.http import BearerGate, create_http_app
 from etrade_mcp.server import create_server
-from tests.helpers import TOKEN, authenticated_http, http_server
+from tests.helpers import READ_TOOLS, TOKEN, authenticated_http, http_server
 from tests.test_server import payload
 
 
@@ -20,7 +20,7 @@ async def test_actual_http_discovery_invocation_and_concurrency(
     async with http_server(broker) as (url, _):
         async with Client(authenticated_http(url), mode=mode) as client:
             tools = (await client.list_tools()).tools
-            assert [t.name for t in tools] == ["server_status"]
+            assert {t.name for t in tools} == READ_TOOLS
             results = await asyncio.gather(*(client.call_tool("server_status") for _ in range(5)))
             assert all(not result.is_error for result in results)
             assert payload(results[0])["data"]["transport"] == "streamable-http"
@@ -87,11 +87,11 @@ async def test_origin_allowlist_and_query_token_rejection(broker: ETradeSettings
             assert "access-control-allow-origin" not in response.headers
 
 
-async def test_bearer_gate_identity_duplicates_and_lifespan() -> None:
-    observed: list[str | None] = []
+async def test_bearer_gate_duplicates_and_lifespan() -> None:
+    observed: list[str] = []
 
     async def inner(scope: Any, receive: Any, send: Any) -> None:
-        observed.append(caller_fingerprint.get())
+        observed.append(scope["type"])
 
     gate = BearerGate(inner, TOKEN)
 
@@ -109,9 +109,7 @@ async def test_bearer_gate_identity_duplicates_and_lifespan() -> None:
         receive,
         send,
     )
-    assert observed[0] is None
-    assert observed[1] is not None and TOKEN not in observed[1]
-    assert caller_fingerprint.get() is None
+    assert observed == ["lifespan", "http"]
     duplicate = [(b"authorization", b"Bearer " + TOKEN.encode())] * 2
     await gate({"type": "http", "headers": duplicate}, receive, send)
     assert messages[0]["status"] == 401

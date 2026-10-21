@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from etrade_mcp.config import CacheLimits, ServerSettings
+from etrade_mcp.config import ServerSettings
 
 
 def test_defaults_and_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -14,7 +14,6 @@ def test_defaults_and_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.bind_port == 8000
     assert settings.profile == "default"
     assert settings.allowed_tools is None
-    assert settings.cache_limits == CacheLimits()
     assert "fake-http-secret" not in repr(settings)
     monkeypatch.setenv("ETRADE_MCP_PROFILE", "personal")
     assert ServerSettings().profile == "personal"
@@ -38,10 +37,6 @@ def test_defaults_and_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         {"transport": "stdio", "profile": " "},
         {"transport": "stdio", "tool_allowlist": "a,,b"},
         {"transport": "stdio", "tool_allowlist": "a-b"},
-        {"transport": "stdio", "result_cache_bytes": 1024},
-        {"transport": "stdio", "result_ttl_seconds": 0},
-        {"transport": "stdio", "result_cache_entries": 0},
-        {"transport": "stdio", "inline_result_bytes": 0},
         {"transport": "other"},
         {"http_bearer_token": "fake", "port": 0},
         {"http_bearer_token": "fake", "port": 65536},
@@ -54,12 +49,10 @@ def test_invalid_settings(options: dict[str, Any]) -> None:
     assert "fake-secret" not in str(error.value)
 
 
-def test_allowlist_and_cache_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_allowlist_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ETRADE_MCP_TOOL_ALLOWLIST", "server_status, other_tool")
-    monkeypatch.setenv("ETRADE_MCP_RESULT_TTL_SECONDS", "60")
     settings = ServerSettings(transport="stdio")
     assert settings.allowed_tools == {"server_status", "other_tool"}
-    assert settings.cache_limits.ttl_seconds == 60
     assert ServerSettings(transport="stdio", tool_allowlist="").allowed_tools == frozenset()
 
 

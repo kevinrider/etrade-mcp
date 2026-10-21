@@ -20,6 +20,23 @@ from tests.conftest import memory_client
 
 TOKEN = "fake-http-bearer-secret"
 
+READ_TOOLS = {
+    "server_status",
+    "accounts_list",
+    "accounts_get_balance",
+    "portfolio_get_positions",
+    "transactions_list",
+    "transactions_get",
+    "market_get_quote",
+    "market_get_quotes",
+    "market_lookup_product",
+    "market_get_option_expirations",
+    "market_get_option_chain",
+    "orders_list",
+    "alerts_list",
+    "alerts_get",
+}
+
 
 @asynccontextmanager
 async def http_server(
