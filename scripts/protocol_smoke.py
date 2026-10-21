@@ -20,7 +20,22 @@ from mcp.types import Tool
 
 async def inspect(client: Client) -> list[Tool]:
     tools = (await client.list_tools()).tools
-    assert [tool.name for tool in tools] == ["server_status"]
+    assert {tool.name for tool in tools} == {
+        "server_status",
+        "accounts_list",
+        "accounts_get_balance",
+        "portfolio_get_positions",
+        "transactions_list",
+        "transactions_get",
+        "market_get_quote",
+        "market_get_quotes",
+        "market_lookup_product",
+        "market_get_option_expirations",
+        "market_get_option_chain",
+        "orders_list",
+        "alerts_list",
+        "alerts_get",
+    }
     result = await client.call_tool("server_status")
     assert not result.is_error
     assert result.structured_content is not None
@@ -30,6 +45,10 @@ async def inspect(client: Client) -> list[Tool]:
     assert data["credential_status"] == "missing"
     assert data["order_execution_enabled"] is False
     assert data["alert_deletion_enabled"] is False
+    unauthenticated = await client.call_tool("market_get_quote", {"symbol": "AAPL"})
+    assert unauthenticated.is_error
+    assert unauthenticated.structured_content is not None
+    assert unauthenticated.structured_content["error"]["code"] == "authentication_required"
     invalid = await client.call_tool("server_status", {"unknown": "fake-private-input"})
     assert invalid.is_error
     assert "fake-private-input" not in invalid.model_dump_json()
