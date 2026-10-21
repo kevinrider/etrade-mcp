@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from contextvars import ContextVar
 from typing import cast
 
 from mcp.server import MCPServer
@@ -14,10 +13,6 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from etrade_mcp.config import ConfigurationError, ServerSettings
 from etrade_mcp.server import Runtime
-
-# Future transient caches can use this opaque principal. Sharing the configured
-# bearer token means sharing this identity and the process's entire tool scope.
-caller_fingerprint: ContextVar[str | None] = ContextVar("caller_fingerprint", default=None)
 
 
 class BearerGate:
@@ -43,11 +38,7 @@ class BearerGate:
             )
             await response(scope, receive, send)
             return
-        identity = caller_fingerprint.set(self.digest.hex())
-        try:
-            await self.app(scope, receive, send)
-        finally:
-            caller_fingerprint.reset(identity)
+        await self.app(scope, receive, send)
 
 
 def create_http_app(server: MCPServer[Runtime], settings: ServerSettings) -> ASGIApp:

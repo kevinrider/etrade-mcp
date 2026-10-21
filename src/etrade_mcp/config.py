@@ -14,22 +14,6 @@ class ConfigurationError(Exception):
     """Sanitized startup failure; never include setting values."""
 
 
-class CacheLimits(BaseModel):
-    """Reserved response-cache contract; storage is implemented in Milestone 3."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
-    ttl_seconds: int = Field(default=300, ge=1)
-    inline_bytes: int = Field(default=65_536, ge=1024)
-    total_bytes: int = Field(default=33_554_432, ge=1024)
-    max_entries: int = Field(default=128, ge=1)
-
-    @model_validator(mode="after")
-    def consistent_budget(self) -> CacheLimits:
-        if self.total_bytes < self.inline_bytes:
-            raise ValueError("Cache budget must accommodate the inline threshold")
-        return self
-
-
 class ServerSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="ETRADE_MCP_",
@@ -48,10 +32,6 @@ class ServerSettings(BaseSettings):
     enable_alert_deletion: bool = False
     # A string preserves the difference between omitted and explicitly empty.
     tool_allowlist: str | None = None
-    result_ttl_seconds: int = Field(default=300, ge=1)
-    inline_result_bytes: int = Field(default=65_536, ge=1024)
-    result_cache_bytes: int = Field(default=33_554_432, ge=1024)
-    result_cache_entries: int = Field(default=128, ge=1)
 
     @field_validator("profile")
     @classmethod
@@ -78,7 +58,6 @@ class ServerSettings(BaseSettings):
             raw = token.get_secret_value()
             if not raw.isascii() or any(ord(c) <= 32 or ord(c) >= 127 for c in raw):
                 raise ValueError("HTTP bearer token must be a nonempty header-safe token")
-        _ = self.cache_limits
         _ = self.allowed_tools
         return self
 
@@ -100,15 +79,6 @@ class ServerSettings(BaseSettings):
         if any(not name or not name.replace("_", "").isalnum() for name in names):
             raise ValueError("Allowlist must contain exact tool names separated by commas")
         return frozenset(names)
-
-    @property
-    def cache_limits(self) -> CacheLimits:
-        return CacheLimits(
-            ttl_seconds=self.result_ttl_seconds,
-            inline_bytes=self.inline_result_bytes,
-            total_bytes=self.result_cache_bytes,
-            max_entries=self.result_cache_entries,
-        )
 
 
 class ServerConfig(BaseModel):

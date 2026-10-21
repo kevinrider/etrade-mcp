@@ -18,7 +18,7 @@ from mcp.types import Tool as MCPTool
 from pydantic import BaseModel, ValidationError
 
 from etrade_mcp._version import __version__
-from etrade_mcp.config import CacheLimits, ServerConfig
+from etrade_mcp.config import ServerConfig
 from etrade_mcp.policy import Capability, ToolPolicy
 from etrade_mcp.responses import (
     Failure,
@@ -58,7 +58,9 @@ class AdapterServer(MCPServer[Runtime]):
     async def list_tools(self) -> list[MCPTool]:
         tools = await super().list_tools()
         return [
-            tool.model_copy(update={"input_schema": self.inputs[tool.name].model_json_schema()})
+            tool.model_copy(
+                update={"input_schema": self.inputs[tool.name].model_json_schema(by_alias=False)}
+            )
             for tool in tools
         ]
 
@@ -77,8 +79,6 @@ class Status(WireModel):
     alert_deletion_enabled: bool
     credential_status: str
     credential_status_source: str = "local_estimate"
-    result_cache_implemented: bool = False
-    result_cache_limits: CacheLimits
 
 
 async def invoke(name: str, state: Runtime, operation: Callable[[], Awaitable[T]]) -> Response[T]:
@@ -126,7 +126,6 @@ async def server_status(ctx: Context[Runtime, Any]) -> Response[Status]:
             order_execution_enabled=state.config.server.enable_order_execution,
             alert_deletion_enabled=state.config.server.enable_alert_deletion,
             credential_status=state.client.session.status(credentials).value,
-            result_cache_limits=state.config.server.cache_limits,
         )
 
     return await invoke("server_status", state, read_status)
@@ -184,8 +183,12 @@ def create_server(
     tools: Sequence[ToolSpec] | None = None,
 ) -> MCPServer[Runtime]:
     """Build the same server for either transport; injection is for library tests."""
+    from etrade_mcp.tools import read_tools
+
     specs = (
-        list(tools) if tools is not None else [ToolSpec("server_status", server_status, EmptyInput)]
+        list(tools)
+        if tools is not None
+        else [ToolSpec("server_status", server_status, EmptyInput), *read_tools()]
     )
     if len({spec.name for spec in specs}) != len(specs):
         from etrade_mcp.config import ConfigurationError
@@ -217,7 +220,7 @@ def create_server(
                 annotations=ToolAnnotations(
                     read_only_hint=spec.capability == "read",
                     destructive_hint=spec.capability != "read",
-                    idempotent_hint=spec.name == "server_status",
+                    idempotent_hint=spec.capability == "read",
                     open_world_hint=spec.name != "server_status",
                 ),
             )(spec.function)
