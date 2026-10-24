@@ -150,7 +150,6 @@ Tool results contain matching JSON text and MCP `structuredContent`:
 
 ```json
 {
-  "ok": false,
   "data": null,
   "error": {
     "code": "authentication_required",
@@ -167,7 +166,13 @@ Tool results contain matching JSON text and MCP `structuredContent`:
 }
 ```
 
-Success has `ok: true`, typed `data`, and `error: null`; failures set MCP `isError`.
+MCP's `isError` is the authoritative tool execution status: success sets it to
+`false` (or omits it), with typed `data` and `error: null`. Tool execution failures
+set `isError: true`, with `data: null` and structured `error` details. The example
+above is the payload of such a failure; `isError` belongs to the enclosing MCP
+tool result, outside both the JSON text and `structuredContent`. Payloads contain
+only `data`, `error`, and `meta`; there is no top-level `ok` field. Protocol-level
+failures remain JSON-RPC errors rather than tool execution results.
 Input models reject unknown fields at both the tool and nested request levels.
 Decimal values serialize as strings. Client response fields use their declared
 JSON aliases (for example, `accountPortfolio`, `nextPageNo`, and `transactionId`),
