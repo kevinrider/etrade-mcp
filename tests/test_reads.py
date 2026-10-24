@@ -178,7 +178,13 @@ async def test_market_only_allowlist_blocks_private_reads(config: ServerConfig, 
         assert {t.name for t in (await client.list_tools()).tools} == {
             "market_get_quote",
         }
-        for name in ("accounts_list", "orders_list", "alerts_get"):
+        for name in (
+            "accounts_list",
+            "orders_list",
+            "alerts_get",
+            "orders_preview",
+            "orders_preview_change",
+        ):
             result = await client.call_tool(name, {})
             assert result.is_error and payload(result)["error"]["code"] == "tool_not_available"
 
