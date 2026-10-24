@@ -1,7 +1,7 @@
 import asyncio
 import json
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal, cast
+from typing import Annotated, Any, Literal, cast
 
 import httpx
 import pytest
@@ -14,7 +14,7 @@ from etrade_python import (
 )
 from mcp import Client
 from mcp.server.mcpserver.context import Context
-from mcp.types import CallToolResult
+from mcp.types import CallToolResult, TextContent
 from pydantic import Field, SecretStr
 
 from etrade_mcp.config import ConfigurationError, ServerConfig, ServerSettings
@@ -33,7 +33,12 @@ from tests.helpers import READ_TOOLS, authenticated_http, http_server
 
 
 def payload(result: CallToolResult) -> dict[str, Any]:
-    return cast(dict[str, Any], result.structured_content)
+    assert result.structured_content is not None
+    data = cast(dict[str, Any], result.structured_content)
+    assert set(data) == {"data", "error", "meta"}
+    assert isinstance(result.content[0], TextContent)
+    assert json.loads(result.content[0].text) == data
+    return data
 
 
 @pytest.mark.parametrize("mode", ["auto", "legacy"])
@@ -47,7 +52,7 @@ async def test_status_protocol_and_strict_schema(
         assert tools[0].output_schema is not None
         result = await client.call_tool("server_status")
         assert not result.is_error
-        assert payload(result)["ok"]
+        assert payload(result)["error"] is None
         assert payload(result)["data"]["credential_status"] == "missing"
         assert payload(result)["meta"]["environment"] == "sandbox"
         assert json.loads(result.content[0].text) == payload(result)  # type: ignore[union-attr]
@@ -103,7 +108,9 @@ class ProbeInput(WireModel):
     symbol: str = Field(min_length=1)
 
 
-async def quote_probe(symbol: str, ctx: Context[Runtime, Any]) -> Response[Quote]:
+async def quote_probe(
+    symbol: str, ctx: Context[Runtime, Any]
+) -> Annotated[CallToolResult, Response[Quote]]:
     """Test-only client-boundary probe; never registered by the production server."""
     state = ctx.request_context.lifespan_context
     return await invoke("quote_probe", state, lambda: state.client.market.get_quote(symbol))
@@ -113,7 +120,9 @@ class Confirmation(WireModel):
     accepted: bool
 
 
-async def mutation_probe(ctx: Context[Runtime, Any]) -> Response[Confirmation]:
+async def mutation_probe(
+    ctx: Context[Runtime, Any],
+) -> Annotated[CallToolResult, Response[Confirmation]]:
     """Test-only mutation policy probe; dispatches no broker request."""
     state = ctx.request_context.lifespan_context
 
@@ -250,13 +259,14 @@ async def test_handler_gate_errors_cancellation_and_closure(config: ServerConfig
         async def forbidden() -> WireModel:
             pytest.fail("Disabled handler must not execute")
 
-        assert (await invoke("mut", state, forbidden)).error is not None
+        denied = await invoke("mut", state, forbidden)
+        assert denied.is_error and payload(denied)["error"]["code"] == "execution_disabled"
 
         async def fails() -> WireModel:
             raise RuntimeError("never-echo-this")
 
         failure = await invoke("read", state, fails)
-        assert failure.error is not None and failure.error.code == "internal_error"
+        assert failure.is_error and payload(failure)["error"]["code"] == "internal_error"
 
         async def cancelled() -> WireModel:
             raise asyncio.CancelledError

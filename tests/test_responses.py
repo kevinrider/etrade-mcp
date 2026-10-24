@@ -81,14 +81,18 @@ class Money(WireModel):
 
 def test_precision_and_response_invariants(config: ServerConfig) -> None:
     response = Response[Money](
-        ok=True, data=Money(amount=Decimal("0.1234567890123456789")), meta=metadata(config)
+        data=Money(amount=Decimal("0.1234567890123456789")), meta=metadata(config)
     )
     assert '"0.1234567890123456789"' in response.model_dump_json()
+    assert "ok" not in response.model_dump()
+    failure = classified_error(RuntimeError())
+    assert Response[Money](error=failure, meta=metadata(config)).data is None
     for values in (
-        {"ok": True},
-        {"ok": False},
-        {"ok": False, "data": response.data, "error": classified_error(RuntimeError())},
-        {"ok": True, "data": response.data, "error": classified_error(RuntimeError())},
+        {},
+        {"data": None, "error": None},
+        {"data": response.data, "error": failure},
+        {"ok": True, "data": response.data},
+        {"ok": False, "error": failure},
     ):
         options: dict[str, Any] = values
         with pytest.raises(ValidationError):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import socket
 import sys
@@ -15,7 +16,7 @@ import httpx2
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 from mcp.client.streamable_http import streamable_http_client
-from mcp.types import Tool
+from mcp.types import CallToolResult, TextContent, Tool
 
 
 async def inspect(client: Client) -> list[Tool]:
@@ -36,10 +37,21 @@ async def inspect(client: Client) -> list[Tool]:
         "alerts_list",
         "alerts_get",
     }
+    for tool in tools:
+        assert tool.output_schema is not None
+        assert set(tool.output_schema["properties"]) == {"data", "error", "meta"}
+
+    async def check_result(name: str, result: CallToolResult) -> None:
+        assert result.structured_content is not None
+        assert set(result.structured_content) == {"data", "error", "meta"}
+        assert isinstance(result.content[0], TextContent)
+        assert json.loads(result.content[0].text) == result.structured_content
+        await client.session.validate_tool_result(name, result)
+
     result = await client.call_tool("server_status")
     assert not result.is_error
     assert result.structured_content is not None
-    assert result.structured_content["ok"] is True
+    await check_result("server_status", result)
     data = result.structured_content["data"]
     assert isinstance(data, dict)
     assert data["credential_status"] == "missing"
@@ -49,9 +61,11 @@ async def inspect(client: Client) -> list[Tool]:
     assert unauthenticated.is_error
     assert unauthenticated.structured_content is not None
     assert unauthenticated.structured_content["error"]["code"] == "authentication_required"
+    await check_result("market_get_quote", unauthenticated)
     invalid = await client.call_tool("server_status", {"unknown": "fake-private-input"})
     assert invalid.is_error
     assert "fake-private-input" not in invalid.model_dump_json()
+    await check_result("server_status", invalid)
     return tools
 
 
