@@ -1,6 +1,6 @@
 """Public market read tools; query and response handling remain in etrade-python."""
 
-from typing import Any
+from typing import Annotated, Any
 
 from etrade_python import (
     OptionChainResponse,
@@ -10,6 +10,7 @@ from etrade_python import (
     QuotesResponse,
 )
 from mcp.server.mcpserver.context import Context
+from mcp.types import CallToolResult
 from pydantic import Field
 
 from etrade_mcp.inputs import ChainRequest, ExpirationsRequest, LookupRequest, QuoteRequest
@@ -24,7 +25,7 @@ class MarketGetQuoteInput(WireModel):
 
 async def market_get_quote(
     ctx: Context[Runtime, Any], symbol: str, request: QuoteRequest | None = None
-) -> Response[Quote]:
+) -> Annotated[CallToolResult, Response[Quote]]:
     """Read a single symbol quote with all supported quote flags."""
     state = ctx.request_context.lifespan_context
     return await invoke(
@@ -39,7 +40,7 @@ class MarketGetQuotesInput(WireModel):
 
 async def market_get_quotes(
     ctx: Context[Runtime, Any], symbols: list[str], request: QuoteRequest | None = None
-) -> Response[QuotesResponse]:
+) -> Annotated[CallToolResult, Response[QuotesResponse]]:
     """Read multiple symbol quotes. The client permits 25 symbols, or 50 with
     override_symbol_count.
     """
@@ -55,7 +56,7 @@ class MarketLookupProductInput(LookupRequest):
 
 async def market_lookup_product(
     ctx: Context[Runtime, Any], search: str
-) -> Response[ProductLookupResponse]:
+) -> Annotated[CallToolResult, Response[ProductLookupResponse]]:
     """Search for products using the client search validation and URL encoding."""
     state = ctx.request_context.lifespan_context
     return await invoke(
@@ -70,7 +71,7 @@ class MarketGetOptionExpirationsInput(WireModel):
 
 async def market_get_option_expirations(
     ctx: Context[Runtime, Any], symbol: str, request: ExpirationsRequest | None = None
-) -> Response[OptionExpirationsResponse]:
+) -> Annotated[CallToolResult, Response[OptionExpirationsResponse]]:
     """Read option expiration dates with optional expiry_type selection."""
     state = ctx.request_context.lifespan_context
     return await invoke(
@@ -87,7 +88,7 @@ class MarketGetOptionChainInput(WireModel):
 
 async def market_get_option_chain(
     ctx: Context[Runtime, Any], symbol: str, request: ChainRequest | None = None
-) -> Response[OptionChainResponse]:
+) -> Annotated[CallToolResult, Response[OptionChainResponse]]:
     """Read an option chain with all supported expiry, strike, weekly, and adjusted filters.
     Monetary inputs are decimal strings.
     """

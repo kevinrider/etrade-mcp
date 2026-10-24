@@ -65,18 +65,14 @@ class Failure(WireModel):
 
 
 class Response(WireModel, Generic[T]):
-    ok: bool
     data: SerializeAsAny[T] | None = None
     error: Failure | None = None
     meta: ResultMeta
 
     @model_validator(mode="after")
     def consistent_result(self) -> Response[T]:
-        if self.ok:
-            if self.data is None or self.error is not None:
-                raise ValueError("Successful responses require only data")
-        elif self.data is not None or self.error is None:
-            raise ValueError("Failed responses require only an error")
+        if (self.data is None) == (self.error is None):
+            raise ValueError("Responses require exactly one of data or error")
         return self
 
 
@@ -162,11 +158,19 @@ def classified_error(
     )
 
 
-def error_result(config: ServerConfig, failure: Failure) -> CallToolResult:
-    envelope = Response[WireModel](ok=False, error=failure, meta=metadata(config))
-    data = envelope.model_dump(mode="json")
+def _tool_result(envelope: Response[T], *, is_error: bool) -> CallToolResult:
+    """Serialize once for identical text and structured payloads."""
+    data = envelope.model_dump(mode="json", by_alias=True)
     return CallToolResult(
         content=[TextContent(type="text", text=json.dumps(data))],
         structured_content=data,
-        is_error=True,
+        is_error=is_error,
     )
+
+
+def success_result(config: ServerConfig, data: BaseModel) -> CallToolResult:
+    return _tool_result(Response[BaseModel](data=data, meta=metadata(config)), is_error=False)
+
+
+def error_result(config: ServerConfig, failure: Failure) -> CallToolResult:
+    return _tool_result(Response[WireModel](error=failure, meta=metadata(config)), is_error=True)

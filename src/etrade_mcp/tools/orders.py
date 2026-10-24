@@ -1,9 +1,10 @@
 """Public orders read tools; query and response handling remain in etrade-python."""
 
-from typing import Any
+from typing import Annotated, Any
 
 from etrade_python import OrdersResponse
 from mcp.server.mcpserver.context import Context
+from mcp.types import CallToolResult
 from pydantic import Field
 
 from etrade_mcp.inputs import OrderListRequest
@@ -18,7 +19,7 @@ class OrdersListInput(WireModel):
 
 async def orders_list(
     ctx: Context[Runtime, Any], account_id_key: str, request: OrderListRequest | None = None
-) -> Response[OrdersResponse]:
+) -> Annotated[CallToolResult, Response[OrdersResponse]]:
     """Read one order page with filters and explicit continuation marker. Does not preview or
     submit orders.
     """

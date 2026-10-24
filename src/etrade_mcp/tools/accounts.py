@@ -1,9 +1,10 @@
 """Public accounts read tools; query and response handling remain in etrade-python."""
 
-from typing import Any
+from typing import Annotated, Any
 
 from etrade_python import AccountBalanceResponse, AccountListResponse
 from mcp.server.mcpserver.context import Context
+from mcp.types import CallToolResult
 from pydantic import Field
 
 from etrade_mcp.inputs import BalanceRequest
@@ -17,7 +18,7 @@ class AccountsListInput(WireModel):
 
 async def accounts_list(
     ctx: Context[Runtime, Any],
-) -> Response[AccountListResponse]:
+) -> Annotated[CallToolResult, Response[AccountListResponse]]:
     """List brokerage accounts."""
     state = ctx.request_context.lifespan_context
     return await invoke("accounts_list", state, lambda: state.client.accounts.list())
@@ -30,7 +31,7 @@ class AccountsGetBalanceInput(WireModel):
 
 async def accounts_get_balance(
     ctx: Context[Runtime, Any], account_id_key: str, request: BalanceRequest | None = None
-) -> Response[AccountBalanceResponse]:
+) -> Annotated[CallToolResult, Response[AccountBalanceResponse]]:
     """Read an account balance with all supported balance query fields."""
     state = ctx.request_context.lifespan_context
     return await invoke(

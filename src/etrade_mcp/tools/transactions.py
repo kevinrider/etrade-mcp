@@ -1,9 +1,10 @@
 """Public transactions read tools; query and response handling remain in etrade-python."""
 
-from typing import Any
+from typing import Annotated, Any
 
 from etrade_python import TransactionDetailsResponse, TransactionsResponse
 from mcp.server.mcpserver.context import Context
+from mcp.types import CallToolResult
 from pydantic import Field
 
 from etrade_mcp.inputs import TransactionListRequest, TransactionRequest
@@ -18,7 +19,7 @@ class TransactionsListInput(WireModel):
 
 async def transactions_list(
     ctx: Context[Runtime, Any], account_id_key: str, request: TransactionListRequest | None = None
-) -> Response[TransactionsResponse]:
+) -> Annotated[CallToolResult, Response[TransactionsResponse]]:
     """Read one transaction page. Markers are inclusive; boundary transactions are preserved."""
     state = ctx.request_context.lifespan_context
     return await invoke(
@@ -37,7 +38,7 @@ async def transactions_get(
     account_id_key: str,
     transaction_id: str,
     request: TransactionRequest | None = None,
-) -> Response[TransactionDetailsResponse]:
+) -> Annotated[CallToolResult, Response[TransactionDetailsResponse]]:
     """Read a transaction by its account and transaction ID, with optional store_id."""
     state = ctx.request_context.lifespan_context
     return await invoke(

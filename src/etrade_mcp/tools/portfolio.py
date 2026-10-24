@@ -1,9 +1,10 @@
 """Public portfolio read tools; query and response handling remain in etrade-python."""
 
-from typing import Any
+from typing import Annotated, Any
 
 from etrade_python import PortfolioResponse
 from mcp.server.mcpserver.context import Context
+from mcp.types import CallToolResult
 from pydantic import Field
 
 from etrade_mcp.inputs import PositionsRequest
@@ -18,7 +19,7 @@ class PortfolioGetPositionsInput(WireModel):
 
 async def portfolio_get_positions(
     ctx: Context[Runtime, Any], account_id_key: str, request: PositionsRequest | None = None
-) -> Response[PortfolioResponse]:
+) -> Annotated[CallToolResult, Response[PortfolioResponse]]:
     """Read one portfolio page, including requested views, lots, and totals. Follow
     next_page_no explicitly.
     """

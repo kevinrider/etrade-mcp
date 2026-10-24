@@ -7,7 +7,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from importlib.metadata import version
-from typing import Any, TypeVar, cast
+from typing import Annotated, Any, TypeVar
 
 from etrade_python import ETradeClient, ETradeSettings
 from mcp.server import MCPServer
@@ -26,7 +26,7 @@ from etrade_mcp.responses import (
     WireModel,
     classified_error,
     error_result,
-    metadata,
+    success_result,
 )
 
 ClientFactory = Callable[[ETradeSettings, str], ETradeClient]
@@ -81,11 +81,13 @@ class Status(WireModel):
     credential_status_source: str = "local_estimate"
 
 
-async def invoke(name: str, state: Runtime, operation: Callable[[], Awaitable[T]]) -> Response[T]:
+async def invoke(
+    name: str, state: Runtime, operation: Callable[[], Awaitable[T]]
+) -> CallToolResult:
     """Handler-side policy plus a sanitized error boundary. Never retries calls."""
     denied = state.policy.denial(name)
     if denied is not None:
-        return Response[T](ok=False, error=denied, meta=metadata(state.config))
+        return error_result(state.config, denied)
     mutation = state.policy.capabilities[name] != "read"
     try:
         data = await operation()
@@ -95,9 +97,9 @@ async def invoke(name: str, state: Runtime, operation: Callable[[], Awaitable[T]
         raise
     except Exception as error:
         token = state.config.server.http_bearer_token
-        return Response[T](
-            ok=False,
-            error=classified_error(
+        return error_result(
+            state.config,
+            classified_error(
                 error,
                 mutation=mutation,
                 secrets=(
@@ -106,12 +108,11 @@ async def invoke(name: str, state: Runtime, operation: Callable[[], Awaitable[T]
                     token.get_secret_value() if token is not None else "",
                 ),
             ),
-            meta=metadata(state.config),
         )
-    return Response[T](ok=True, data=data, meta=metadata(state.config))
+    return success_result(state.config, data)
 
 
-async def server_status(ctx: Context[Runtime, Any]) -> Response[Status]:
+async def server_status(ctx: Context[Runtime, Any]) -> Annotated[CallToolResult, Response[Status]]:
     """Report server policy and a local credential estimate; makes no broker request."""
     state = ctx.request_context.lifespan_context
 
@@ -159,17 +160,7 @@ class ToolBoundary:
                 self.config, Failure(code="invalid_input", message="Tool arguments are invalid.")
             )
         # Handler invoke() catches errors before the SDK can log their contents.
-        result = await call_next(ctx)
-        if isinstance(result, CallToolResult):
-            data = result.structured_content
-            if isinstance(data, dict) and cast(dict[str, object], data).get("ok") is False:
-                return result.model_copy(update={"is_error": True})
-        elif isinstance(result, dict):
-            tool_result = CallToolResult.model_validate(result)
-            data = tool_result.structured_content
-            if isinstance(data, dict) and cast(dict[str, object], data).get("ok") is False:
-                return tool_result.model_copy(update={"is_error": True})
-        return result
+        return await call_next(ctx)
 
 
 def default_client(settings: ETradeSettings, profile: str) -> ETradeClient:
