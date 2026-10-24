@@ -3,8 +3,9 @@
 A typed, async MCP adapter over [etrade-python](https://pypi.org/project/etrade-python/).
 Python 3.11–3.14; loopback Streamable HTTP and stdio.
 
-**Alpha: Milestone 3.** All 13 client-supported brokerage reads and
-`server_status` are available over both transports. Previews and mutations
+**Alpha: Milestone 4.** All 13 client-supported brokerage reads, both order
+preview tools, and `server_status` are available over both transports: 16 tools
+by default. Placement, cancellation, modification execution, and alert deletion
 remain planned. Enabling execution flags does not add unimplemented tools.
 The [tool coverage table](#tool-coverage) tracks implemented tools and their
 tests, planned client operations, request models, and intentional omissions.
@@ -122,6 +123,12 @@ tools are hidden from discovery and denied on direct invocation. The allowlist
 cannot override disabled execution capabilities. Order execution and alert
 deletion are independent switches; both default off.
 
+Read and preview capabilities are enabled by default. `orders_preview` and
+`orders_preview_change` do not require `--enable-order-execution`; either can
+still be excluded by the tool allowlist. Preview annotations are non-destructive,
+with `readOnlyHint: false` and `idempotentHint: false`, because broker previews
+generate identifiers and should not be treated as automatically repeatable reads.
+
 Execution switches authorize a process capability. An HTTP bearer token identifies
 access to that process. Neither proves human approval of an individual trade.
 The consuming host must obtain approval for every opening, closing, cancellation,
@@ -130,7 +137,7 @@ obtain new approval after material changes. An LLM-supplied approval flag has no
 such authority. All HTTP callers sharing the token share one profile and access
 scope; this is a trusted local deployment, not multi-user account isolation.
 
-Future tools will keep preview and placement separate. The adapter adds no
+Preview and placement remain separate operations. The adapter adds no
 mutation retries, execution database, approval records, deduplication, or background
 monitoring. Hosts own submission history and reconciliation. After a lost response
 or uncertain outcome, reconcile with the broker before resubmitting. A restart
@@ -173,7 +180,9 @@ above is the payload of such a failure; `isError` belongs to the enclosing MCP
 tool result, outside both the JSON text and `structuredContent`. Payloads contain
 only `data`, `error`, and `meta`; there is no top-level `ok` field. Protocol-level
 failures remain JSON-RPC errors rather than tool execution results.
-Input models reject unknown fields at both the tool and nested request levels.
+Input models reject unknown fields at the tool level and wherever the client
+would otherwise discard them. Order-detail and instrument inputs preserve
+additional fields explicitly supported by the client's extension policy.
 Decimal values serialize as strings. Client response fields use their declared
 JSON aliases (for example, `accountPortfolio`, `nextPageNo`, and `transactionId`),
 matching the advertised output schemas. Responses preserve the complete client-modeled data for each broker page.
@@ -192,7 +201,63 @@ known secrets excluded. Errors distinguish:
 Mutation transport loss, malformed responses, and potentially ambiguous server
 errors are conservatively uncertain. Cancellation propagates to the SDK; a host
 that loses a mutation response must reconcile even when no error result arrives.
-No brokerage preview or mutation tool ships yet.
+Preview failures use ordinary input, authentication, broker, and transport error
+categories. A preview failure does not indicate uncertain trade execution.
+No brokerage mutation tool ships yet.
+
+## Order previews and host review
+
+`orders_preview` accepts an account ID key and a required complete client preview
+request under `request`. `orders_preview_change` takes the same fields plus a
+positive integer `order_id` identifying the existing order. A change preview is
+a complete replacement request, not a patch. For example:
+
+```json
+{
+  "account_id_key": "account-key",
+  "request": {
+    "order_type": "EQ",
+    "client_order_id": "ExamplePreview1",
+    "orders": [{
+      "price_type": "LIMIT",
+      "limit_price": "10.125",
+      "order_term": "GOOD_FOR_DAY",
+      "instruments": [{
+        "product": {"symbol": "SYN", "security_type": "EQ"},
+        "order_action": "BUY",
+        "quantity": "1"
+      }]
+    }]
+  }
+}
+```
+
+Use Python field names as advertised by discovery, or client-supported aliases
+such as `orderType`, `clientOrderId`, `Order`, `Instrument`, and `Product`.
+Conflicting duplicate spellings are rejected. All modeled prices, strikes,
+quantities, lot sizes, and mutual-fund amounts require decimal strings. The
+client's unused empty `stop_price` placeholder remains supported. Multiple order
+entries and instruments, alternate quantity types, lots, disclosures, routing,
+and supported order-detail/instrument extensions pass through the public client
+models. Product, lot, mutual-fund quantity, disclosure, and outer request models
+reject unknown fields instead of silently losing them.
+
+Success returns the complete client-modeled broker preview, including `PreviewIds`,
+`Order`, estimated amounts, disclosures, and warnings. The adapter does not create
+an operation handle, save a pending order, generate a client order ID, associate
+previews across calls, or submit an order. Each valid, permitted call invokes the
+selected client preview method once. Client previews use no automatic retries, including
+on rate limits, server errors, malformed responses, or timeouts. A restart does
+not recover an earlier result or automatically redispatch a preview.
+
+The consuming host must retain the complete request, including extensions, with
+its broker preview IDs, timestamp, and warnings; display it for review; and own
+freshness and human approval. A preview or an execution capability switch is not
+approval. Material request changes require renewed review and approval and a new
+preview as required by the broker and host policy. Multi-leg requests may include
+closing and opening legs, but the server performs no roll orchestration or
+multi-order rollback. For a change preview, the host must also verify the exact
+account/order target. Placement and change placement remain future tools.
 
 ## Read inputs and pagination
 
@@ -259,9 +324,9 @@ represent available tools. Test links open the file containing the named test.
 | `market.get_option_expirations` | `market_get_option_expirations` | Implemented | `OptionExpirationsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
 | `market.get_option_chain` | `market_get_option_chain` | Implemented | `OptionChainRequest` | [Request mapping and field coverage](tests/test_reads.py) |
 | `orders.list` | `orders_list` | Implemented | `OrdersRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `orders.preview` | `orders_preview` | Planned | `PreviewOrderRequest` | — |
+| `orders.preview` | `orders_preview` | Implemented | `PreviewOrderRequest` | [Preview mapping, nested fields, permissions, and no-retry tests](tests/test_previews.py) |
 | `orders.place` | `orders_place` | Planned | `PlaceOrderRequest` | — |
-| `orders.preview_change` | `orders_preview_change` | Planned | `PreviewOrderRequest` | — |
+| `orders.preview_change` | `orders_preview_change` | Implemented | `PreviewOrderRequest` | [Explicit target, replacement bodies, and protocol tests](tests/test_previews.py) |
 | `orders.place_change` | `orders_place_change` | Planned | `PlaceOrderRequest` | — |
 | `orders.cancel` | `orders_cancel` | Planned | `CancelOrderRequest` | — |
 | `alerts.list` | `alerts_list` | Implemented | `AlertsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
@@ -278,7 +343,13 @@ The cases in [tests/read_cases.py](tests/read_cases.py) enumerate every supporte
 read request field. `test_read_request_fields_reach_real_client` verifies their
 final HTTP paths and query parameters using the real client;
 `test_request_cases_cover_public_client_fields` checks those cases against the
-public request models. Preview and mutation coverage follows in later milestones.
+public request models. `test_preview_nested_field_coverage_and_schema` in
+[tests/test_previews.py](tests/test_previews.py) checks every public preview request
+field, including nested models. Its protocol cases cover equity, options, verticals,
+three-leg orders, iron condors, buy-writes, mixed closing/opening legs, multiple
+order entries, and alternate sizing. Fixtures are synthetic client-valid contracts,
+not evidence that the broker accepts every combination. Mutation coverage follows
+in later milestones.
 
 ## Development and verification
 
