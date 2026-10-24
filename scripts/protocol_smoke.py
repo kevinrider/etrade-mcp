@@ -34,6 +34,8 @@ async def inspect(client: Client) -> list[Tool]:
         "market_get_option_expirations",
         "market_get_option_chain",
         "orders_list",
+        "orders_preview",
+        "orders_preview_change",
         "alerts_list",
         "alerts_get",
     }
@@ -62,6 +64,33 @@ async def inspect(client: Client) -> list[Tool]:
     assert unauthenticated.structured_content is not None
     assert unauthenticated.structured_content["error"]["code"] == "authentication_required"
     await check_result("market_get_quote", unauthenticated)
+    preview = await client.call_tool(
+        "orders_preview",
+        {
+            "account_id_key": "synthetic-key",
+            "request": {
+                "order_type": "EQ",
+                "client_order_id": "SmokePreview1",
+                "orders": [
+                    {
+                        "price_type": "MARKET",
+                        "order_term": "GOOD_FOR_DAY",
+                        "instruments": [
+                            {
+                                "product": {"symbol": "SYN", "security_type": "EQ"},
+                                "order_action": "BUY",
+                                "quantity": "1",
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+    )
+    assert preview.is_error
+    assert preview.structured_content is not None
+    assert preview.structured_content["error"]["code"] == "authentication_required"
+    await check_result("orders_preview", preview)
     invalid = await client.call_tool("server_status", {"unknown": "fake-private-input"})
     assert invalid.is_error
     assert "fake-private-input" not in invalid.model_dump_json()

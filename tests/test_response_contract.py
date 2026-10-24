@@ -8,7 +8,8 @@ from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 from mcp.types import CallToolResult
 
-from tests.helpers import READ_TOOLS, authenticated_http, http_server
+from tests.helpers import DEFAULT_TOOLS, authenticated_http, http_server
+from tests.preview_cases import REQUESTS
 from tests.read_cases import CASES
 from tests.response_contract_worker import client_factory, tool_specs
 from tests.test_server import payload
@@ -21,7 +22,7 @@ async def test_native_tool_status_and_output_schema_contract(
 ) -> None:
     async def check(client: Client) -> None:
         tools = (await client.list_tools()).tools
-        assert {tool.name for tool in tools} == READ_TOOLS
+        assert {tool.name for tool in tools} == DEFAULT_TOOLS
         for tool in tools:
             assert tool.output_schema is not None
             assert set(tool.output_schema["properties"]) == {"data", "error", "meta"}
@@ -45,6 +46,14 @@ async def test_native_tool_status_and_output_schema_contract(
         await verify("server_status", status)
         for case in CASES:
             await verify(case.tool, await client.call_tool(case.tool, case.arguments))
+        for name in ("orders_preview", "orders_preview_change"):
+            arguments: dict[str, Any] = {
+                "account_id_key": "synthetic-key",
+                "request": REQUESTS["equity"],
+            }
+            if name == "orders_preview_change":
+                arguments["order_id"] = 17
+            await verify(name, await client.call_tool(name, arguments))
 
         failures: list[tuple[str, dict[str, Any], str]] = [
             ("server_status", {"unknown": "fake-private-input"}, "invalid_input"),
@@ -58,7 +67,7 @@ async def test_native_tool_status_and_output_schema_contract(
             result = await client.call_tool(name, arguments)
             # Hidden tools have no discovery schema. Their error envelope is
             # shared with every advertised tool, including server_status.
-            schema_name = name if name in READ_TOOLS else "server_status"
+            schema_name = name if name in DEFAULT_TOOLS else "server_status"
             await verify(schema_name, result, code)
 
         # Prove discovery schemas reject the removed field rather than merely

@@ -36,6 +36,8 @@ READ_TOOLS = {
     "alerts_list",
     "alerts_get",
 }
+PREVIEW_TOOLS = {"orders_preview", "orders_preview_change"}
+DEFAULT_TOOLS = READ_TOOLS | PREVIEW_TOOLS
 
 
 @asynccontextmanager

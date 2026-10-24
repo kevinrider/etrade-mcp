@@ -13,7 +13,7 @@ from typer.testing import CliRunner
 from etrade_mcp import __version__
 from etrade_mcp.cli import app
 from etrade_mcp.server import AdapterServer
-from tests.helpers import READ_TOOLS, authenticated_http, http_server
+from tests.helpers import DEFAULT_TOOLS, authenticated_http, http_server
 
 runner = CliRunner()
 
@@ -151,7 +151,7 @@ async def test_actual_stdio_cli_protocol_and_stdout() -> None:
         process.stdin.write(b'{"jsonrpc":"2.0","method":"notifications/initialized"}\n')
         await process.stdin.drain()
         discovery = await request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
-        assert {tool["name"] for tool in discovery["result"]["tools"]} == READ_TOOLS
+        assert {tool["name"] for tool in discovery["result"]["tools"]} == DEFAULT_TOOLS
         result = await request(
             {
                 "jsonrpc": "2.0",

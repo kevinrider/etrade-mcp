@@ -19,7 +19,7 @@ from etrade_mcp.config import ConfigurationError, ServerConfig, ServerSettings
 from etrade_mcp.http import BearerGate, ProtocolErrorSanitizer, create_http_app
 from etrade_mcp.server import create_server
 from tests.conftest import memory_client
-from tests.helpers import READ_TOOLS, TOKEN, authenticated_http, http_server
+from tests.helpers import DEFAULT_TOOLS, TOKEN, authenticated_http, http_server
 from tests.test_server import payload
 
 
@@ -30,7 +30,7 @@ async def test_actual_http_discovery_invocation_and_concurrency(
     async with http_server(broker) as (url, _):
         async with Client(authenticated_http(url), mode=mode) as client:
             tools = (await client.list_tools()).tools
-            assert {t.name for t in tools} == READ_TOOLS
+            assert {t.name for t in tools} == DEFAULT_TOOLS
             results = await asyncio.gather(*(client.call_tool("server_status") for _ in range(5)))
             assert all(not result.is_error for result in results)
             assert payload(results[0])["data"]["transport"] == "streamable-http"
@@ -156,7 +156,7 @@ def test_http_accepts_default_ports_and_canonical_ipv6(
     with TestClient(app, base_url=f"http://localhost:{port}") as http:
         natural = http.post("/mcp", headers={**headers, "Host": natural_host}, json=request)
         assert natural.status_code == 200
-        assert {tool["name"] for tool in natural.json()["result"]["tools"]} == READ_TOOLS
+        assert {tool["name"] for tool in natural.json()["result"]["tools"]} == DEFAULT_TOOLS
         allowed = [f"{authority}:{port}" for authority in authorities]
         if port == 80:
             allowed.extend(authorities)
@@ -272,7 +272,7 @@ async def test_malformed_http_protocol_errors_are_sanitized(
             async with Client(
                 authenticated_http(url), mode="auto" if protocol == "2026-07-28" else "legacy"
             ) as client:
-                assert {tool.name for tool in (await client.list_tools()).tools} == READ_TOOLS
+                assert {tool.name for tool in (await client.list_tools()).tools} == DEFAULT_TOOLS
     for secret in ("fake-private-pii", TOKEN, broker.consumer_secret.get_secret_value()):
         assert secret not in response.text
         assert secret not in caplog.text

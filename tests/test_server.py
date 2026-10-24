@@ -29,7 +29,7 @@ from etrade_mcp.server import (
     server_status,
 )
 from tests.conftest import memory_client
-from tests.helpers import READ_TOOLS, authenticated_http, http_server
+from tests.helpers import DEFAULT_TOOLS, authenticated_http, http_server
 
 
 def payload(result: CallToolResult) -> dict[str, Any]:
@@ -47,7 +47,7 @@ async def test_status_protocol_and_strict_schema(
 ) -> None:
     async with Client(create_server(config, client_factory=memory_client), mode=mode) as client:
         tools = (await client.list_tools()).tools
-        assert {tool.name for tool in tools} == READ_TOOLS
+        assert {tool.name for tool in tools} == DEFAULT_TOOLS
         assert tools[0].input_schema["additionalProperties"] is False
         assert tools[0].output_schema is not None
         result = await client.call_tool("server_status")
