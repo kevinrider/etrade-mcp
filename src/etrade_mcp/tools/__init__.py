@@ -1,4 +1,4 @@
-"""Read tool registry shared by HTTP and stdio."""
+"""Read and preview tool registries shared by HTTP and stdio."""
 
 from etrade_mcp.server import ToolSpec
 from etrade_mcp.tools.accounts import (
@@ -20,7 +20,14 @@ from etrade_mcp.tools.market import (
     market_get_quotes,
     market_lookup_product,
 )
-from etrade_mcp.tools.orders import OrdersListInput, orders_list
+from etrade_mcp.tools.orders import (
+    OrdersListInput,
+    OrdersPreviewChangeInput,
+    OrdersPreviewInput,
+    orders_list,
+    orders_preview,
+    orders_preview_change,
+)
 from etrade_mcp.tools.portfolio import PortfolioGetPositionsInput, portfolio_get_positions
 from etrade_mcp.tools.transactions import (
     TransactionsGetInput,
@@ -49,4 +56,13 @@ def read_tools() -> list[ToolSpec]:
         ToolSpec("orders_list", orders_list, OrdersListInput),
         ToolSpec("alerts_list", alerts_list, AlertsListInput),
         ToolSpec("alerts_get", alerts_get, AlertsGetInput),
+    ]
+
+
+def preview_tools() -> list[ToolSpec]:
+    return [
+        ToolSpec("orders_preview", orders_preview, OrdersPreviewInput, "preview"),
+        ToolSpec(
+            "orders_preview_change", orders_preview_change, OrdersPreviewChangeInput, "preview"
+        ),
     ]

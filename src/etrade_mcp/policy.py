@@ -6,7 +6,7 @@ from typing import Literal
 from etrade_mcp.config import ConfigurationError, ServerSettings
 from etrade_mcp.responses import Failure
 
-Capability = Literal["read", "order_execution", "alert_deletion"]
+Capability = Literal["read", "preview", "order_execution", "alert_deletion"]
 
 
 class ToolPolicy:

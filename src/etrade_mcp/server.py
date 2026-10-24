@@ -88,7 +88,7 @@ async def invoke(
     denied = state.policy.denial(name)
     if denied is not None:
         return error_result(state.config, denied)
-    mutation = state.policy.capabilities[name] != "read"
+    mutation = state.policy.capabilities[name] in {"order_execution", "alert_deletion"}
     try:
         data = await operation()
     except asyncio.CancelledError:
@@ -174,12 +174,12 @@ def create_server(
     tools: Sequence[ToolSpec] | None = None,
 ) -> MCPServer[Runtime]:
     """Build the same server for either transport; injection is for library tests."""
-    from etrade_mcp.tools import read_tools
+    from etrade_mcp.tools import preview_tools, read_tools
 
     specs = (
         list(tools)
         if tools is not None
-        else [ToolSpec("server_status", server_status, EmptyInput), *read_tools()]
+        else [ToolSpec("server_status", server_status, EmptyInput), *read_tools(), *preview_tools()]
     )
     if len({spec.name for spec in specs}) != len(specs):
         from etrade_mcp.config import ConfigurationError
@@ -210,7 +210,7 @@ def create_server(
                 name=spec.name,
                 annotations=ToolAnnotations(
                     read_only_hint=spec.capability == "read",
-                    destructive_hint=spec.capability != "read",
+                    destructive_hint=spec.capability in {"order_execution", "alert_deletion"},
                     idempotent_hint=spec.capability == "read",
                     open_world_hint=spec.name != "server_status",
                 ),
