@@ -149,9 +149,9 @@ def test_http_accepts_default_ports_and_canonical_ipv6(
     request = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
     headers = {"Authorization": "Bearer " + TOKEN, "Accept": "application/json, text/event-stream"}
 
-    # Drive the real lifespan without port binding. TestClient cannot parse
-    # IPv6 URLs, so generate the natural Host with the production HTTP client
-    # and carry it over an in-process localhost request instead.
+    # Drive the real lifespan without port binding. Generate the natural Host
+    # with the production HTTP client to exercise normal URL serialization
+    # alongside the explicit header spellings below.
     natural_host = httpx2.Request("POST", f"http://{authorities[0]}:{port}/mcp").headers["host"]
     with TestClient(app, base_url=f"http://localhost:{port}") as http:
         natural = http.post("/mcp", headers={**headers, "Host": natural_host}, json=request)

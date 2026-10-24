@@ -27,7 +27,7 @@ dependencies = [
   "pydantic>=2.12,<3",
   "pydantic-settings>=2.7,<3",
   "typer>=0.20,<1",
-  "starlette>=0.48,<1",
+  "starlette>=1.10,<2",
   "uvicorn>=0.31.1,<1",
 ]
 
