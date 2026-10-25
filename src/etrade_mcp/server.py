@@ -19,6 +19,7 @@ from pydantic import BaseModel, ValidationError
 
 from etrade_mcp._version import __version__
 from etrade_mcp.config import ServerConfig
+from etrade_mcp.guidance import described_input_schema, tool_description
 from etrade_mcp.policy import Capability, ToolPolicy
 from etrade_mcp.responses import (
     Failure,
@@ -59,7 +60,7 @@ class AdapterServer(MCPServer[Runtime]):
         tools = await super().list_tools()
         return [
             tool.model_copy(
-                update={"input_schema": self.inputs[tool.name].model_json_schema(by_alias=False)}
+                update={"input_schema": described_input_schema(tool.name, self.inputs[tool.name])}
             )
             for tool in tools
         ]
@@ -208,6 +209,7 @@ def create_server(
         if policy.denial(spec.name) is None:
             server.tool(
                 name=spec.name,
+                description=tool_description(spec.name),
                 annotations=ToolAnnotations(
                     read_only_hint=spec.capability == "read",
                     destructive_hint=spec.capability in {"order_execution", "alert_deletion"},
