@@ -40,6 +40,11 @@ async def inspect(client: Client) -> list[Tool]:
         "alerts_get",
     }
     for tool in tools:
+        assert tool.description and len(tool.description) <= 4096
+        assert tool.input_schema.get("examples")
+        for definition in [tool.input_schema, *tool.input_schema.get("$defs", {}).values()]:
+            for field in definition.get("properties", {}).values():
+                assert field.get("description")
         assert tool.output_schema is not None
         assert set(tool.output_schema["properties"]) == {"data", "error", "meta"}
 

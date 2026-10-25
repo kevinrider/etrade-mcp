@@ -10,6 +10,8 @@ import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
+from etrade_mcp.guidance import catalog
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -37,6 +39,10 @@ def main() -> None:
     if len(wheels) != 1 or len(sources) != 1:
         raise RuntimeError("Expected exactly one wheel and one sdist; run uv build --clear")
 
+    guidance_assets = {
+        "etrade_mcp/descriptions/fields.toml",
+        *(f"etrade_mcp/descriptions/{name}.md" for name in catalog().tools),
+    }
     with zipfile.ZipFile(wheels[0]) as archive:
         check_contents(
             archive.namelist(),
@@ -48,7 +54,8 @@ def main() -> None:
                 "etrade_mcp/server.py",
                 "etrade_mcp/http.py",
                 "etrade_mcp/config.py",
-            },
+            }
+            | guidance_assets,
         )
     with tarfile.open(sources[0]) as archive:
         check_contents(
@@ -65,7 +72,8 @@ def main() -> None:
                 "LICENSE",
                 "pyproject.toml",
                 "uv.lock",
-            },
+            }
+            | {"src/" + name for name in guidance_assets},
         )
 
     # -I excludes the checkout and inherited Python path settings from imports.
@@ -75,10 +83,14 @@ from importlib.resources import files
 from pathlib import Path
 import etrade_mcp
 import sys
+from etrade_mcp.guidance import catalog, tool_description
 
 assert etrade_mcp.__version__ == version('etrade-mcp')
 assert metadata('etrade-mcp')['License-Expression'] == 'Apache-2.0'
 assert files('etrade_mcp').joinpath('py.typed').is_file()
+assert len(catalog().tools) == 16
+for name in catalog().tools:
+    assert tool_description(name)
 assert Path(etrade_mcp.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())
 print(f'Installed etrade-mcp {etrade_mcp.__version__} on Python {sys.version.split()[0]}')
 """
