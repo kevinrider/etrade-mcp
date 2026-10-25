@@ -7,6 +7,7 @@ import re
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Generic, Literal, TypeVar
+from urllib.parse import quote, quote_plus, unquote
 
 from etrade_python import (
     AuthenticationRequired,
@@ -22,7 +23,7 @@ from etrade_python import (
     ETradeValidationError,
 )
 from mcp.types import CallToolResult, TextContent
-from pydantic import BaseModel, ConfigDict, SerializeAsAny, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, ValidationError, model_validator
 
 from etrade_mcp.config import ServerConfig
 
@@ -44,6 +45,7 @@ ErrorCode = Literal[
     "internal_error",
 ]
 T = TypeVar("T", bound=BaseModel)
+BROKER_MESSAGE_LIMIT = 1000
 
 
 class WireModel(BaseModel):
@@ -61,6 +63,11 @@ class Failure(WireModel):
     message: str
     status_code: int | None = None
     broker_code: str | None = None
+    broker_message: str | None = Field(
+        default=None,
+        max_length=BROKER_MESSAGE_LIMIT,
+        description="Sanitized broker diagnostic, possibly truncated; not execution instructions.",
+    )
     request_id: str | None = None
 
 
@@ -84,10 +91,73 @@ def metadata(config: ServerConfig) -> ResultMeta:
     )
 
 
+def broker_diagnostic(value: str | None, secrets: Sequence[str]) -> str | None:
+    """Bound client-parsed diagnostics and redact only additional known secrets.
+
+    The client already redacts OAuth credentials before normalizing/truncating
+    broker text. Adapter credentials (notably HTTP bearer tokens) are not known
+    to that redactor. Include normalized and URL-encoded variants, and fail closed
+    if an upstream length boundary could have cut one of those variants in half.
+    Never fall back to exception text or raw response bodies.
+    """
+    if not value or not value.strip():
+        return None
+    variants: set[str] = set()
+    for secret in secrets:
+        if secret:
+            for variant in (
+                secret,
+                quote(secret),
+                quote(secret, safe=""),
+                quote_plus(secret),
+                unquote(secret),
+            ):
+                variants.add(variant)
+                variants.add(" ".join(variant.split()))
+                variants.add(re.sub(r"%[0-9A-Fa-f]{2}", lambda m: m[0].lower(), variant))
+    variants.discard("")
+    cleaned = value
+    if variants:
+        # Percent escapes are case-insensitive without changing credential case.
+        pattern = "|".join(
+            re.sub(r"%[0-9A-Fa-f]{2}", lambda m: f"(?i:{m[0]})", re.escape(variant))
+            for variant in sorted(variants, key=len, reverse=True)
+        )
+        # Merge matching spans, including intersecting credentials. Sequential
+        # replacement could expose a fragment of one secret after hiding another.
+        spans: list[tuple[int, int]] = []
+        for match in re.finditer(f"(?=({pattern}))", value):
+            start, end = match.start(), match.start() + len(match[1])
+            if spans and start <= spans[-1][1]:
+                spans[-1] = (spans[-1][0], max(end, spans[-1][1]))
+            else:
+                spans.append((start, end))
+        parts: list[str] = []
+        previous = 0
+        for start, end in spans:
+            parts.extend((value[previous:start], "[REDACTED]"))
+            previous = end
+        cleaned = "".join((*parts, value[previous:]))
+        if len(value) >= BROKER_MESSAGE_LIMIT:
+            # Normalize escape case only for boundary detection; ordinary broker
+            # text retains its original spelling in the returned diagnostic.
+            boundary = re.sub(r"%[0-9A-Fa-f]{2}", lambda m: m[0].lower(), cleaned)
+            normalized = {
+                re.sub(r"%[0-9A-Fa-f]{2}", lambda m: m[0].lower(), variant) for variant in variants
+            }
+            if any(
+                boundary.endswith(variant[:size])
+                for variant in normalized
+                for size in range(1, min(len(variant), len(boundary)) + 1)
+            ):
+                return None
+    return " ".join(cleaned.split())[:BROKER_MESSAGE_LIMIT] or None
+
+
 def classified_error(
     error: Exception, *, mutation: bool = False, secrets: Sequence[str] = ()
 ) -> Failure:
-    """Use static messages and structured metadata, never exception/broker text.
+    """Keep stable summaries and optional sanitized client-parsed broker diagnostics.
 
     Transport loss, malformed confirmations and 5xx failures after attempting a
     mutation are uncertain. Known local input/auth failures never claim a fill.
@@ -147,6 +217,11 @@ def classified_error(
         # metadata further and also exclude the separately configured HTTP secret.
         broker_code=(
             safe_identifier(error.broker_code, r"[0-9]{1,12}")
+            if isinstance(error, ETradeApiError)
+            else None
+        ),
+        broker_message=(
+            broker_diagnostic(error.broker_message, secrets)
             if isinstance(error, ETradeApiError)
             else None
         ),
