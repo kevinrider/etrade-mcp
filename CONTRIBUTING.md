@@ -56,6 +56,32 @@ client operations or MCP tools change. Link implemented tools to relevant tests,
 distinguish planned tools, explain intentional omissions, and document coverage
 of request fields when adding brokerage wrappers.
 
+## Maintain tool guidance
+
+Tool descriptions live in packaged Markdown files under
+`src/etrade_mcp/descriptions/`, named after each tool. Field descriptions live in
+`fields.toml` in that directory, keyed by input model and Python field name.
+Keep prose there and short implementation docstrings beside handlers. Validation,
+types, defaults, aliases, and behavioral annotations belong in Python.
+
+Every fenced `json` block in a tool description must be a complete synthetic
+argument object for that tool. The server also advertises those blocks as input
+schema examples and validates them with the actual input model. Use fake account
+keys and symbols, decimal strings for modeled prices/quantities, and no credentials
+or customer data. Examples establish request structure, not broker acceptance.
+
+Describe when to use the tool, prerequisites, identifiers, conditional fields,
+pagination, returned information, and approval/execution boundaries as applicable.
+Put essential guidance first and keep descriptions within 4,096 characters for
+hosts with shorter description budgets. Explain advanced settings through field
+descriptions rather than filling examples with unused optional objects.
+
+When adding or renaming a production tool, update the TOML tool catalog, its
+Markdown file, and all referenced input models, including nested definitions.
+Guidance tests detect missing/stale fields and check actual HTTP/stdio discovery.
+Do not change schema constraints through the description layer or mutate client
+models. Built-artifact checks must verify these assets outside the checkout.
+
 ## Run checks
 
 Before submitting a pull request, run:

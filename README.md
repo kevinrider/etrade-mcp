@@ -3,7 +3,7 @@
 A typed, async MCP adapter over [etrade-python](https://pypi.org/project/etrade-python/).
 Python 3.11–3.14; loopback Streamable HTTP and stdio.
 
-**Alpha: Milestone 4.** All 13 client-supported brokerage reads, both order
+**Alpha: Milestone 4A.** All 13 client-supported brokerage reads, both order
 preview tools, and `server_status` are available over both transports: 16 tools
 by default. Placement, cancellation, modification execution, and alert deletion
 remain planned. Enabling execution flags does not add unimplemented tools.
@@ -204,6 +204,25 @@ that loses a mutation response must reconcile even when no error result arrives.
 Preview failures use ordinary input, authentication, broker, and transport error
 categories. A preview failure does not indicate uncertain trade execution.
 No brokerage mutation tool ships yet.
+
+## Tool guidance
+
+MCP `tools/list` exposes usage descriptions, input field guidance (including
+nested order fields), and complete synthetic argument examples. View these in
+MCP Inspector or your client's discovery response. Hosts decide how to present
+descriptions and schema examples to their models; the server's input validation
+still applies independently.
+
+Examples show request structure, not current contracts, market prices, account
+eligibility, or authenticated broker acceptance. Use your own account identifiers
+and broker-listed contracts. Omit unused optional objects or use null, especially
+`disclosure` and `mf_quantity`: explicit objects are preserved even when their
+children are all null, and the broker may reject the resulting empty objects.
+False and zero values are preserved where the client supports them.
+
+Specialized order previews and reusable placement arguments are planned. The
+currently available previews still return the complete broker response directly
+under `data`; no execution tools have been added.
 
 ## Order previews and host review
 
