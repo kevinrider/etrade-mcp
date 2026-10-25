@@ -109,6 +109,12 @@ async def test_preview_protocol_capabilities(
                 result = await client.call_tool(name, arguments(name, REQUESTS["equity"], account))
                 assert result.is_error
                 assert payload(result)["error"]["code"] == code
+                if account in {"preview-reject", "preview-auth", "preview-rate", "preview-down"}:
+                    assert (
+                        payload(result)["error"]["broker_message"] == "Synthetic broker rejection."
+                    )
+                else:
+                    assert payload(result)["error"]["broker_message"] is None
                 assert "fake-private" not in result.model_dump_json()
                 await client.session.validate_tool_result(name, result)
             invalid = await client.call_tool(name, arguments(name, {"approved": True}))

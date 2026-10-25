@@ -52,13 +52,26 @@ def broker_response(request: httpx.Request) -> httpx.Response:
             return httpx.Response(
                 statuses[account],
                 headers={"Retry-After": "0"},
-                json={"Error": {"code": "100", "message": "fake-private-broker-detail"}},
+                json={
+                    "Error": {
+                        "code": "100",
+                        "message": "Synthetic broker rejection.",
+                        "private": "fake-private-broker-detail",
+                    }
+                },
             )
         assert account == "synthetic-key"
         return httpx.Response(200, json=PREVIEW_RESPONSE)
     if request.url.path == "/v1/market/quote/REJECT.json":
         return httpx.Response(
-            400, json={"Error": {"code": "100", "message": "fake-private-broker-detail"}}
+            400,
+            json={
+                "Error": {
+                    "code": "100",
+                    "message": "Synthetic broker rejection.",
+                    "private": "fake-private-broker-detail",
+                }
+            },
         )
     if request.url.path == "/v1/market/quote/BROKEN.json":
         return httpx.Response(200, json={"unrecognized": "fake-private-broker-detail"})

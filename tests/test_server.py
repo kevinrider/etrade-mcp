@@ -186,7 +186,16 @@ async def test_adapter_to_real_client_and_error_mapping(config: ServerConfig, st
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         if status != 200:
-            return httpx.Response(status, json={"Error": {"code": "100", "message": "fake-secret"}})
+            return httpx.Response(
+                status,
+                json={
+                    "Error": {
+                        "code": "100",
+                        "message": "Synthetic broker rejection.",
+                        "private": "fake-secret",
+                    }
+                },
+            )
         return httpx.Response(
             200,
             json={
@@ -227,6 +236,7 @@ async def test_adapter_to_real_client_and_error_mapping(config: ServerConfig, st
         else:
             assert payload(result)["error"]["code"] == "broker_rejection"
             assert payload(result)["error"]["broker_code"] == "100"
+            assert payload(result)["error"]["broker_message"] == "Synthetic broker rejection."
             assert "fake-secret" not in result.model_dump_json()
         invalid = await client.call_tool("quote_probe", {"symbol": 1})
         assert invalid.is_error

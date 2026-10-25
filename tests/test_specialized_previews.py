@@ -287,7 +287,13 @@ async def test_specialized_errors_are_sanitized_and_never_retried(
         return httpx.Response(
             status,
             headers={"Retry-After": "0"},
-            json={"Error": {"code": "100", "message": "fake-private-broker"}},
+            json={
+                "Error": {
+                    "code": "100",
+                    "message": "Synthetic broker rejection.",
+                    "private": "fake-private-broker-detail",
+                }
+            },
         )
 
     async with Client(create_server(config, client_factory=broker_factory(handler))) as client:
@@ -305,6 +311,9 @@ async def test_specialized_errors_are_sanitized_and_never_retried(
             result = await client.call_tool(name, args_for(name, CASES[family_name(name)][0]))
             assert result.is_error and payload(result)["error"]["code"] == code
             assert len(calls) == count + 1
+            assert payload(result)["error"]["broker_message"] == (
+                "Synthetic broker rejection." if status >= 400 else None
+            )
             assert "fake-private" not in result.model_dump_json()
             await client.session.validate_tool_result(name, result)
         count = len(calls)
