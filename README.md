@@ -3,7 +3,7 @@
 A typed, async MCP adapter over [etrade-python](https://pypi.org/project/etrade-python/).
 Python 3.11–3.14; loopback Streamable HTTP and stdio.
 
-**Alpha: Milestone 4B.** All 13 client-supported brokerage reads, 20 order
+**Alpha: Milestone 4C.** All 13 client-supported brokerage reads, 20 order
 preview tools, and `server_status` are available over both transports: 34 tools
 by default. Placement, cancellation, modification execution, and alert deletion
 remain planned. Enabling execution flags does not add unimplemented tools.
@@ -163,6 +163,7 @@ Tool results contain matching JSON text and MCP `structuredContent`:
     "message": "Run etrade auth login for the configured environment/profile.",
     "status_code": null,
     "broker_code": null,
+    "broker_message": null,
     "request_id": null
   },
   "meta": {
@@ -186,9 +187,32 @@ additional fields explicitly supported by the client's extension policy.
 Decimal values serialize as strings. Client response fields use their declared
 JSON aliases (for example, `accountPortfolio`, `nextPageNo`, and `transactionId`),
 matching the advertised output schemas. Responses preserve the complete client-modeled data for each broker page.
-Errors use static messages without raw input, exception text, or broker payloads.
-Numeric broker codes and bounded safe request identifiers may be preserved, with
-known secrets excluded. Errors distinguish:
+Errors retain stable adapter codes and summary messages. A nullable
+`error.broker_message` exposes the public client's parsed broker explanation, so
+callers can understand rejection details without a separate error-code catalog.
+For example, an order rejection can contain:
+
+```json
+{
+  "code": "broker_rejection",
+  "message": "Broker rejection.",
+  "status_code": 400,
+  "broker_code": "51016",
+  "broker_message": "Quantity cannot be changed for Buy Write/Spread Orders.",
+  "request_id": null
+}
+```
+
+Broker messages are returned as diagnostic data, never as instructions to approve,
+execute, or automatically retry an order. They do not override `isError`, adapter
+classification, or an uncertain-execution summary. Successful preview messages
+and warnings remain in `data.broker_preview` unchanged.
+
+Broker text is whitespace-normalized and
+limited to 1,000 characters. Missing/blank messages return null; a possible secret
+fragment at the client's truncation boundary causes the message to be suppressed. Broker messages
+are not written to server logs. Numeric broker codes and bounded safe request
+identifiers may be preserved, with known secrets excluded. Errors distinguish:
 
 - Invalid requests/policy: `invalid_input`, `execution_disabled`, `tool_not_available`.
 - Credentials: `authentication_required`, `authorization_expired`,
