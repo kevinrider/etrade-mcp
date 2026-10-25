@@ -77,8 +77,23 @@ async def test_preview_protocol_capabilities(
                 # method/path/body against the public client's reference body.
                 result = await client.call_tool(name, arguments(name, value))
                 assert not result.is_error, result.model_dump_json()
-                assert payload(result)["data"] == expected
-                assert payload(result)["data"]["PreviewIds"][1]["cashMargin"] == "MARGIN"
+                assert payload(result)["data"]["broker_preview"] == expected
+                placement = payload(result)["data"]["placement_arguments"]
+                canonical = PreviewOrderRequest.model_validate(value).request_body()[
+                    "PreviewOrderRequest"
+                ]
+                assert placement["request"] == {
+                    **canonical,
+                    "PreviewIds": [{"previewId": 101}, {"previewId": 102}],
+                }
+                assert placement["account_id_key"] == "synthetic-key"
+                assert ("order_id" in placement) == (name == "orders_preview_change")
+                if name == "orders_preview_change":
+                    assert placement["order_id"] == 17
+                assert (
+                    payload(result)["data"]["broker_preview"]["PreviewIds"][1]["cashMargin"]
+                    == "MARGIN"
+                )
                 await client.session.validate_tool_result(name, result)
 
             for account, code in [
@@ -384,6 +399,9 @@ async def test_preview_cancellation_and_explicit_repreview(config: ServerConfig)
                 "orders_preview", arguments("orders_preview", REQUESTS["equity"])
             )
             assert not result.is_error
-            assert payload(result)["data"]["PreviewIds"][0]["previewId"] == 102 + iteration
+            assert (
+                payload(result)["data"]["broker_preview"]["PreviewIds"][0]["previewId"]
+                == 102 + iteration
+            )
     assert len(calls) == 3  # A restart or explicit repeat never recovers/replays a stored result.
     assert all(call.content == calls[0].content for call in calls)

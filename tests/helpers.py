@@ -37,7 +37,21 @@ READ_TOOLS = {
     "alerts_get",
 }
 PREVIEW_TOOLS = {"orders_preview", "orders_preview_change"}
-DEFAULT_TOOLS = READ_TOOLS | PREVIEW_TOOLS
+ORDER_FAMILIES = (
+    "equity",
+    "single_option",
+    "buy_write",
+    "vertical",
+    "butterfly",
+    "condor",
+    "iron_butterfly",
+    "iron_condor",
+    "call_spread_short_put",
+)
+SPECIALIZED_TOOLS = {
+    f"orders_preview_{prefix}{family}" for family in ORDER_FAMILIES for prefix in ("", "change_")
+}
+DEFAULT_TOOLS = READ_TOOLS | PREVIEW_TOOLS | SPECIALIZED_TOOLS
 
 
 @asynccontextmanager

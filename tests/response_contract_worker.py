@@ -12,6 +12,7 @@ from etrade_mcp.server import EmptyInput, ToolSpec, create_server, server_status
 from etrade_mcp.tools import preview_tools, read_tools
 from tests.preview_cases import PREVIEW_RESPONSE, REQUESTS
 from tests.read_cases import CASES
+from tests.specialized_cases import CASES as SPECIALIZED_CASES
 from tests.test_reads import broker_factory
 from tests.test_server import mutation_probe
 
@@ -26,6 +27,10 @@ def broker_response(request: httpx.Request) -> httpx.Response:
         }
         assert json.loads(request.content) in [
             PreviewOrderRequest.model_validate(value).request_body() for value in REQUESTS.values()
+        ] + [
+            {"PreviewOrderRequest": case["canonical_preview_request"]}
+            for cases in SPECIALIZED_CASES.values()
+            for case in cases
         ]
         if account == "preview-timeout":
             raise httpx.ReadTimeout("fake-private-timeout", request=request)

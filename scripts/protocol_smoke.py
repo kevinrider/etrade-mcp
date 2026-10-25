@@ -38,6 +38,20 @@ async def inspect(client: Client) -> list[Tool]:
         "orders_preview_change",
         "alerts_list",
         "alerts_get",
+    } | {
+        f"orders_preview_{prefix}{family}"
+        for family in (
+            "equity",
+            "single_option",
+            "buy_write",
+            "vertical",
+            "butterfly",
+            "condor",
+            "iron_butterfly",
+            "iron_condor",
+            "call_spread_short_put",
+        )
+        for prefix in ("", "change_")
     }
     for tool in tools:
         assert tool.description and len(tool.description) <= 4096
@@ -96,6 +110,24 @@ async def inspect(client: Client) -> list[Tool]:
     assert preview.structured_content is not None
     assert preview.structured_content["error"]["code"] == "authentication_required"
     await check_result("orders_preview", preview)
+    for name in ("orders_preview_equity", "orders_preview_change_equity"):
+        arguments: dict[str, Any] = {
+            "account_id_key": "synthetic-key",
+            "request": {
+                "client_order_id": "SmokeEquity1",
+                "symbol": "SYN",
+                "order_action": "BUY",
+                "quantity": "1",
+                "price_type": "MARKET",
+            },
+        }
+        if name == "orders_preview_change_equity":
+            arguments["order_id"] = 17
+        specialized = await client.call_tool(name, arguments)
+        assert specialized.is_error
+        assert specialized.structured_content is not None
+        assert specialized.structured_content["error"]["code"] == "authentication_required"
+        await check_result(name, specialized)
     invalid = await client.call_tool("server_status", {"unknown": "fake-private-input"})
     assert invalid.is_error
     assert "fake-private-input" not in invalid.model_dump_json()
