@@ -29,6 +29,7 @@ from etrade_mcp.tools.orders import (
     orders_preview_change,
 )
 from etrade_mcp.tools.portfolio import PortfolioGetPositionsInput, portfolio_get_positions
+from etrade_mcp.tools.specialized import specialized_preview_tools
 from etrade_mcp.tools.transactions import (
     TransactionsGetInput,
     TransactionsListInput,
@@ -61,6 +62,7 @@ def read_tools() -> list[ToolSpec]:
 
 def preview_tools() -> list[ToolSpec]:
     return [
+        *specialized_preview_tools(),
         ToolSpec("orders_preview", orders_preview, OrdersPreviewInput, "preview"),
         ToolSpec(
             "orders_preview_change", orders_preview_change, OrdersPreviewChangeInput, "preview"

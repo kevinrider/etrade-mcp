@@ -1,6 +1,6 @@
 # Discovery-only prose. Field names match Python input schema properties.
 # Changing this file must not change validation, defaults, aliases, or serialization.
-tools = ["server_status", "accounts_list", "accounts_get_balance", "portfolio_get_positions", "transactions_list", "transactions_get", "market_get_quote", "market_get_quotes", "market_lookup_product", "market_get_option_expirations", "market_get_option_chain", "orders_list", "alerts_list", "alerts_get", "orders_preview", "orders_preview_change"]
+tools = ["orders_preview_equity", "orders_preview_change_equity", "orders_preview_single_option", "orders_preview_change_single_option", "orders_preview_buy_write", "orders_preview_change_buy_write", "orders_preview_vertical", "orders_preview_change_vertical", "orders_preview_butterfly", "orders_preview_change_butterfly", "orders_preview_condor", "orders_preview_change_condor", "orders_preview_iron_butterfly", "orders_preview_change_iron_butterfly", "orders_preview_iron_condor", "orders_preview_change_iron_condor", "orders_preview_call_spread_short_put", "orders_preview_change_call_spread_short_put", "server_status", "accounts_list", "accounts_get_balance", "portfolio_get_positions", "transactions_list", "transactions_get", "market_get_quote", "market_get_quotes", "market_lookup_product", "market_get_option_expirations", "market_get_option_chain", "orders_list", "alerts_list", "alerts_get", "orders_preview", "orders_preview_change"]
 
 [models.EmptyInput]
 
@@ -191,3 +191,229 @@ request = "Required complete PreviewOrderRequest, including client_order_id and 
 account_id_key = "Required obfuscated accountIdKey from accounts_list, not the numeric accountId/account number. Use the account associated with the intended request."
 request = "Required complete replacement PreviewOrderRequest, not a patch. Preserve intended order settings; broker restrictions can prohibit changes to some fields."
 order_id = "Required positive integer broker order ID from orders_list for this account. Identifies the working order to replace; this is not a preview ID."
+
+[models.EquityRequest]
+client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
+order_term = "Requested term; advanced terms use the general tool."
+market_session = "Requested session; broker checks instrument/price eligibility."
+all_or_none = "Optional all-or-none instruction. Omitted/null stays absent; false is transmitted."
+limit_price = "Limit or net debit/credit per broker pricing basis. Positive finite decimal string; validation parses Decimal without a float conversion."
+stop_price = "Stop trigger, used by STOP and STOP_LIMIT only. Positive finite decimal string; validation parses Decimal without a float conversion."
+order_action = "Explicit equity action."
+quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion. Base ratio quantity; positive finite decimal string. Equity fractional eligibility is decided by the broker."
+price_type = "Explicit price instruction; never infer debit/credit from structure direction."
+
+[models.OrdersPreviewEquityInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+
+[models.OrdersPreviewChangeEquityInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
+
+[models.SingleOptionRequest]
+client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
+order_term = "Requested term; advanced terms use the general tool."
+market_session = "Requested session; broker checks instrument/price eligibility."
+all_or_none = "Optional all-or-none instruction. Omitted/null stays absent; false is transmitted."
+limit_price = "Limit or net debit/credit per broker pricing basis. Positive finite decimal string; validation parses Decimal without a float conversion."
+stop_price = "Stop trigger, used by STOP and STOP_LIMIT only. Positive finite decimal string; validation parses Decimal without a float conversion."
+order_action = "Explicit option action; opening/closing is never inferred."
+quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion. Base ratio quantity; positive finite decimal string. Must be a whole number of option contracts; leg ratios are applied exactly."
+call_put = "One shared option right."
+expiration = "Required actual listed expiration in exact YYYY-MM-DD format and a valid calendar date. Shared by all option legs; use market_get_option_expirations and market_get_option_chain."
+strike_price = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+price_type = "Explicit price instruction; never infer debit/credit from structure direction."
+
+[models.OrdersPreviewSingleOptionInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+
+[models.OrdersPreviewChangeSingleOptionInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
+
+[models.BuyWriteRequest]
+client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
+order_term = "Requested term; advanced terms use the general tool."
+market_session = "Requested session; broker checks instrument/price eligibility."
+all_or_none = "Optional all-or-none instruction. Omitted/null stays absent; false is transmitted."
+limit_price = "Limit or net debit/credit per broker pricing basis. Positive finite decimal string; validation parses Decimal without a float conversion."
+stop_price = "Stop trigger, used by STOP and STOP_LIMIT only. Positive finite decimal string; validation parses Decimal without a float conversion."
+stock_quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion."
+option_quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion."
+expiration = "Required actual listed expiration in exact YYYY-MM-DD format and a valid calendar date. Shared by all option legs; use market_get_option_expirations and market_get_option_chain."
+strike_price = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+price_type = "Explicit price instruction; never infer debit/credit from structure direction."
+
+[models.OrdersPreviewBuyWriteInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+
+[models.OrdersPreviewChangeBuyWriteInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
+
+[models.VerticalRequest]
+client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
+order_term = "Requested term; advanced terms use the general tool."
+market_session = "Requested session; broker checks instrument/price eligibility."
+all_or_none = "Optional all-or-none instruction. Omitted/null stays absent; false is transmitted."
+limit_price = "Limit or net debit/credit per broker pricing basis. Positive finite decimal string; validation parses Decimal without a float conversion."
+stop_price = "Stop trigger, used by STOP and STOP_LIMIT only. Positive finite decimal string; validation parses Decimal without a float conversion."
+quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion. Base ratio quantity; positive finite decimal string. Must be a whole number of option contracts; leg ratios are applied exactly."
+call_put = "One shared option right."
+expiration = "Required actual listed expiration in exact YYYY-MM-DD format and a valid calendar date. Shared by all option legs; use market_get_option_expirations and market_get_option_chain."
+buy_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+sell_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+position_effect = "Required OPEN or CLOSE for the whole structure. Contract role labels describe opening sides; CLOSE reverses every side to the corresponding closing action. No holding is inferred."
+price_type = "Explicit price instruction; never infer debit/credit from structure direction."
+
+[models.OrdersPreviewVerticalInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+
+[models.OrdersPreviewChangeVerticalInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
+
+[models.ButterflyRequest]
+client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
+order_term = "Requested term; advanced terms use the general tool."
+market_session = "Requested session; broker checks instrument/price eligibility."
+all_or_none = "Optional all-or-none instruction. Omitted/null stays absent; false is transmitted."
+limit_price = "Limit or net debit/credit per broker pricing basis. Positive finite decimal string; validation parses Decimal without a float conversion."
+stop_price = "Stop trigger, used by STOP and STOP_LIMIT only. Positive finite decimal string; validation parses Decimal without a float conversion."
+quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion. Base ratio quantity; positive finite decimal string. Must be a whole number of option contracts; leg ratios are applied exactly."
+call_put = "One shared option right."
+expiration = "Required actual listed expiration in exact YYYY-MM-DD format and a valid calendar date. Shared by all option legs; use market_get_option_expirations and market_get_option_chain."
+lower_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+middle_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+upper_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+wing_action = "Required BUY or SELL side of opening outer wings. Inner sides are opposite; CLOSE reverses all actions. Explicit price_type determines debit/credit independently."
+position_effect = "Required OPEN or CLOSE for the whole structure. Contract role labels describe opening sides; CLOSE reverses every side to the corresponding closing action. No holding is inferred."
+price_type = "Explicit price instruction; never infer debit/credit from structure direction."
+
+[models.OrdersPreviewButterflyInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+
+[models.OrdersPreviewChangeButterflyInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
+
+[models.CondorRequest]
+client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
+order_term = "Requested term; advanced terms use the general tool."
+market_session = "Requested session; broker checks instrument/price eligibility."
+all_or_none = "Optional all-or-none instruction. Omitted/null stays absent; false is transmitted."
+limit_price = "Limit or net debit/credit per broker pricing basis. Positive finite decimal string; validation parses Decimal without a float conversion."
+stop_price = "Stop trigger, used by STOP and STOP_LIMIT only. Positive finite decimal string; validation parses Decimal without a float conversion."
+quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion. Base ratio quantity; positive finite decimal string. Must be a whole number of option contracts; leg ratios are applied exactly."
+call_put = "One shared option right."
+expiration = "Required actual listed expiration in exact YYYY-MM-DD format and a valid calendar date. Shared by all option legs; use market_get_option_expirations and market_get_option_chain."
+lower_wing_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+lower_body_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+upper_body_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+upper_wing_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+wing_action = "Required BUY or SELL side of opening outer wings. Inner sides are opposite; CLOSE reverses all actions. Explicit price_type determines debit/credit independently."
+position_effect = "Required OPEN or CLOSE for the whole structure. Contract role labels describe opening sides; CLOSE reverses every side to the corresponding closing action. No holding is inferred."
+price_type = "Explicit price instruction; never infer debit/credit from structure direction."
+
+[models.OrdersPreviewCondorInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+
+[models.OrdersPreviewChangeCondorInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
+
+[models.IronButterflyRequest]
+client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
+order_term = "Requested term; advanced terms use the general tool."
+market_session = "Requested session; broker checks instrument/price eligibility."
+all_or_none = "Optional all-or-none instruction. Omitted/null stays absent; false is transmitted."
+limit_price = "Limit or net debit/credit per broker pricing basis. Positive finite decimal string; validation parses Decimal without a float conversion."
+stop_price = "Stop trigger, used by STOP and STOP_LIMIT only. Positive finite decimal string; validation parses Decimal without a float conversion."
+quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion. Base ratio quantity; positive finite decimal string. Must be a whole number of option contracts; leg ratios are applied exactly."
+expiration = "Required actual listed expiration in exact YYYY-MM-DD format and a valid calendar date. Shared by all option legs; use market_get_option_expirations and market_get_option_chain."
+lower_put_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+middle_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+upper_call_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+wing_action = "Required BUY or SELL side of opening outer wings. Inner sides are opposite; CLOSE reverses all actions. Explicit price_type determines debit/credit independently."
+position_effect = "Required OPEN or CLOSE for the whole structure. Contract role labels describe opening sides; CLOSE reverses every side to the corresponding closing action. No holding is inferred."
+price_type = "Explicit price instruction; never infer debit/credit from structure direction."
+
+[models.OrdersPreviewIronButterflyInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+
+[models.OrdersPreviewChangeIronButterflyInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
+
+[models.IronCondorRequest]
+client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
+order_term = "Requested term; advanced terms use the general tool."
+market_session = "Requested session; broker checks instrument/price eligibility."
+all_or_none = "Optional all-or-none instruction. Omitted/null stays absent; false is transmitted."
+limit_price = "Limit or net debit/credit per broker pricing basis. Positive finite decimal string; validation parses Decimal without a float conversion."
+stop_price = "Stop trigger, used by STOP and STOP_LIMIT only. Positive finite decimal string; validation parses Decimal without a float conversion."
+quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion. Base ratio quantity; positive finite decimal string. Must be a whole number of option contracts; leg ratios are applied exactly."
+expiration = "Required actual listed expiration in exact YYYY-MM-DD format and a valid calendar date. Shared by all option legs; use market_get_option_expirations and market_get_option_chain."
+lower_put_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+upper_put_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+lower_call_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+upper_call_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+wing_action = "Required BUY or SELL side of opening outer wings. Inner sides are opposite; CLOSE reverses all actions. Explicit price_type determines debit/credit independently."
+position_effect = "Required OPEN or CLOSE for the whole structure. Contract role labels describe opening sides; CLOSE reverses every side to the corresponding closing action. No holding is inferred."
+price_type = "Explicit price instruction; never infer debit/credit from structure direction."
+
+[models.OrdersPreviewIronCondorInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+
+[models.OrdersPreviewChangeIronCondorInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
+
+[models.CallSpreadShortPutRequest]
+client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
+order_term = "Requested term; advanced terms use the general tool."
+market_session = "Requested session; broker checks instrument/price eligibility."
+all_or_none = "Optional all-or-none instruction. Omitted/null stays absent; false is transmitted."
+limit_price = "Limit or net debit/credit per broker pricing basis. Positive finite decimal string; validation parses Decimal without a float conversion."
+stop_price = "Stop trigger, used by STOP and STOP_LIMIT only. Positive finite decimal string; validation parses Decimal without a float conversion."
+quantity = "Requested units; option units must be whole contracts, equity units follow broker eligibility. Positive finite decimal string; validation parses Decimal without a float conversion. Base ratio quantity; positive finite decimal string. Must be a whole number of option contracts; leg ratios are applied exactly."
+expiration = "Required actual listed expiration in exact YYYY-MM-DD format and a valid calendar date. Shared by all option legs; use market_get_option_expirations and market_get_option_chain."
+buy_call_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+sell_call_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+short_put_strike = "Explicit listed contract strike. Positive finite decimal string; validation parses Decimal without a float conversion."
+position_effect = "Required OPEN or CLOSE for the whole structure. Contract role labels describe opening sides; CLOSE reverses every side to the corresponding closing action. No holding is inferred."
+price_type = "Explicit price instruction; never infer debit/credit from structure direction."
+
+[models.OrdersPreviewCallSpreadShortPutInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+
+[models.OrdersPreviewChangeCallSpreadShortPutInput]
+account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
+request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
+order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."

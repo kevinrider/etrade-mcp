@@ -4,7 +4,7 @@ Provide order_type, a caller-assigned 1–20 alphanumeric client_order_id, and c
 
 Omit unused optional objects (especially disclosure and mf_quantity) or use null. Explicit objects are preserved even when all children are null; do not fill the schema with placeholder objects. Detail/instrument extensions are supported; unknown fields elsewhere are rejected.
 
-Returns the complete broker preview directly in data, including PreviewIds and warnings. Retain the exact request, preview IDs, and observation time for review. Preview is not approval; the host owns request binding, freshness, human approval, and submission history. No pending order is stored, no order is placed, and no automatic retry occurs. Use orders_preview_change for an existing order.
+Returns data.broker_preview with the complete broker preview, including PreviewIds and warnings. data.placement_arguments contains the exact normalized request plus all preview IDs and account targeting for future placement; it is not approval or authorization. Retain the exact request, preview IDs, and observation time for review. Preview is not approval; the host owns request binding, freshness, human approval, and submission history. No pending order is stored, no order is placed, and no automatic retry occurs. Use orders_preview_change for an existing order.
 
 Synthetic argument example:
 

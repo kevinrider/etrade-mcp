@@ -1,3 +1,5 @@
+Returns data.broker_preview with the complete broker response and data.placement_arguments with the exact normalized replacement, account/order targeting, and every preview ID. Placement arguments are not approval, authorization, freshness, or duplicate protection.
+
 Preview a complete replacement for a working order without modifying or placing it. Obtain account_id_key and the positive integer order_id from orders_list; use the order ID, not a preview ID. Inspect current broker status first.
 
 Provide the complete intended replacement under request, including unchanged settings to retain; this is not a price-only patch. Use the same full request schema as orders_preview, including explicit option opening/closing actions and decimal-string prices/quantities. Omit unused disclosure/mf_quantity objects or use null; explicit empty/all-null objects are preserved.
