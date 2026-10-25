@@ -3,8 +3,8 @@
 A typed, async MCP adapter over [etrade-python](https://pypi.org/project/etrade-python/).
 Python 3.11–3.14; loopback Streamable HTTP and stdio.
 
-**Alpha: Milestone 4A.** All 13 client-supported brokerage reads, both order
-preview tools, and `server_status` are available over both transports: 16 tools
+**Alpha: Milestone 4B.** All 13 client-supported brokerage reads, 20 order
+preview tools, and `server_status` are available over both transports: 34 tools
 by default. Placement, cancellation, modification execution, and alert deletion
 remain planned. Enabling execution flags does not add unimplemented tools.
 The [tool coverage table](#tool-coverage) tracks implemented tools and their
@@ -123,9 +123,9 @@ tools are hidden from discovery and denied on direct invocation. The allowlist
 cannot override disabled execution capabilities. Order execution and alert
 deletion are independent switches; both default off.
 
-Read and preview capabilities are enabled by default. `orders_preview` and
-`orders_preview_change` do not require `--enable-order-execution`; either can
-still be excluded by the tool allowlist. Preview annotations are non-destructive,
+Read and preview capabilities are enabled by default. All general and specialized
+previews work without `--enable-order-execution` and can be excluded by the tool
+allowlist. Preview annotations are non-destructive,
 with `readOnlyHint: false` and `idempotentHint: false`, because broker previews
 generate identifiers and should not be treated as automatically repeatable reads.
 
@@ -220,9 +220,9 @@ and broker-listed contracts. Omit unused optional objects or use null, especiall
 children are all null, and the broker may reject the resulting empty objects.
 False and zero values are preserved where the client supports them.
 
-Specialized order previews and reusable placement arguments are planned. The
-currently available previews still return the complete broker response directly
-under `data`; no execution tools have been added.
+General and specialized previews return the complete broker response under
+`data.broker_preview` and reusable placement inputs under `data.placement_arguments`.
+No execution tools have been added.
 
 ## Order previews and host review
 
@@ -261,8 +261,16 @@ and supported order-detail/instrument extensions pass through the public client
 models. Product, lot, mutual-fund quantity, disclosure, and outer request models
 reject unknown fields instead of silently losing them.
 
-Success returns the complete client-modeled broker preview, including `PreviewIds`,
-`Order`, estimated amounts, disclosures, and warnings. The adapter does not create
+All previews return `data.broker_preview` with the complete client-modeled broker
+preview, including `PreviewIds`, `Order`, estimated amounts, disclosures, and
+warnings. `data.placement_arguments` contains `account_id_key` and a complete
+broker-aliased `PlaceOrderRequest` under `request`, constructed from the actual
+normalized preview request plus every returned numeric preview ID, in broker
+order. Change previews also include `order_id`. Preview-ID response metadata is
+not copied into the placement request. Supported order extensions, false/zero
+values, and decimal precision are preserved; client broker metadata is stripped.
+
+The adapter does not create
 an operation handle, save a pending order, generate a client order ID, associate
 previews across calls, or submit an order. Each valid, permitted call invokes the
 selected client preview method once. Client previews use no automatic retries, including
@@ -277,6 +285,68 @@ preview as required by the broker and host policy. Multi-leg requests may includ
 closing and opening legs, but the server performs no roll orchestration or
 multi-order rollback. For a change preview, the host must also verify the exact
 account/order target. Placement and change placement remain future tools.
+
+## Specialized order previews
+
+Choose the families you use through `--tool-allowlist`. Selection does not
+implicitly enable companion tools. For example, an equity-only process can use:
+
+```sh
+uv run --frozen etrade-mcp serve \
+  --tool-allowlist server_status,accounts_list,market_get_quote,orders_list,orders_preview_equity,orders_preview_change_equity
+```
+
+For single-option workflows, select `orders_preview_single_option` and
+`orders_preview_change_single_option` plus the market/account tools you need.
+Omitting the allowlist exposes all 34 implemented tools. Configure separate
+processes when consumers need different tool exposure.
+
+Every new preview accepts `{account_id_key, request}`. Every change preview
+accepts `{account_id_key, order_id, request}` and requires a complete replacement,
+not a patch. No existing order is fetched implicitly. The broker decides which
+fields of a working order can be changed, including spread/buy-write quantities.
+
+Synthetic equity example for `orders_preview_equity`:
+
+```json
+{
+  "account_id_key": "synthetic-key",
+  "request": {
+    "client_order_id": "ExampleEquity001",
+    "symbol": "SYN",
+    "order_action": "BUY",
+    "quantity": "100",
+    "price_type": "LIMIT",
+    "limit_price": "5.00"
+  }
+}
+```
+
+For `orders_preview_change_equity`, add the existing `order_id` at the top level
+and supply the entire desired request. Defaults are `GOOD_FOR_DAY` and `REGULAR`.
+All families accept optional `all_or_none`, preserving explicit `false`.
+
+Equity and single options support MARKET, LIMIT, STOP, and STOP_LIMIT. LIMIT
+requires `limit_price`; STOP requires `stop_price`; STOP_LIMIT requires both.
+Combinations support NET_DEBIT and NET_CREDIT with a positive `limit_price`
+magnitude on the broker pricing basis, or NET_EVEN with no price. Omit unused
+prices or use null. All prices, strikes, and quantities are positive finite
+decimal strings; option quantities must be whole contracts. Use actual listed
+expirations in YYYY-MM-DD format and explicit contract strikes and rights.
+
+Named combinations require `position_effect`: OPEN or CLOSE. Their strike roles
+always describe the opening structure. CLOSE reverses every opening BUY role
+to SELL_CLOSE and every SELL role to BUY_CLOSE. Wing structures also require
+`wing_action`: BUY or SELL for the opening outer legs. No debit/credit, contract,
+price, holding, or strategy is inferred.
+
+Buy-writes open stock BUY plus call SELL_OPEN, with independent stock/option
+quantities and no assumed multiplier. Paired unwinds use the general tools.
+Specialized tools omit advanced terms, routing, lots, disclosures, reserve/OSI
+metadata, additional extensions, alternate sizing, multiple entries, and mixed
+opening/closing adjustments. These remain available in `orders_preview` and
+`orders_preview_change`. Broker acceptance and account eligibility remain broker
+responsibilities. Every tool advertises its precise fields and synthetic example.
 
 ## Read inputs and pagination
 
@@ -354,6 +424,24 @@ represent available tools. Test links open the file containing the named test.
 | `portfolio.iter_positions` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
 | `transactions.list_all` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
 | `orders.list_all` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
+
+The specialized tools below all call `orders.preview` or `orders.preview_change`
+with public `PreviewOrderRequest` models. New/change request mappings, general
+parity, native errors, HTTP/stdio schemas, and permissions are covered by
+[tests/test_specialized_previews.py](tests/test_specialized_previews.py), with
+synthetic expected bodies in [tests/specialized_cases.py](tests/specialized_cases.py).
+
+| Family | New preview | Change preview | Construction / limitations |
+| --- | --- | --- | --- |
+| Equity | `orders_preview_equity` | `orders_preview_change_equity` | One EQ leg; explicit equity action. |
+| Single option | `orders_preview_single_option` | `orders_preview_change_single_option` | One OPTN leg; explicit right, expiration, strike, and action. |
+| Buy-write | `orders_preview_buy_write` | `orders_preview_change_buy_write` | Equity BUY + call SELL_OPEN; independent quantities; opening only. |
+| Vertical | `orders_preview_vertical` | `orders_preview_change_vertical` | Two distinct strikes, same right/expiration, equal quantities. |
+| Butterfly | `orders_preview_butterfly` | `orders_preview_change_butterfly` | Three ascending equally spaced strikes; same right; 1:2:1. |
+| Condor | `orders_preview_condor` | `orders_preview_change_condor` | Four ascending strikes; same right; 1:1:1:1; unequal wing widths allowed. |
+| Iron butterfly | `orders_preview_iron_butterfly` | `orders_preview_change_iron_butterfly` | Put/put/call/call; shared middle strike; equal wing widths and quantities. |
+| Iron condor | `orders_preview_iron_condor` | `orders_preview_change_iron_condor` | Ascending put/put/call/call; equal quantities; unequal wing widths allowed. |
+| Call spread + short put | `orders_preview_call_spread_short_put` | `orders_preview_change_call_spread_short_put` | BUY call / SELL call / SELL put opening roles; same expiration, equal quantities. |
 
 OAuth login, verifier exchange, explicit renewal and revocation remain in the
 `etrade` CLI. Automatic client lifecycle management remains active.

@@ -82,6 +82,14 @@ Guidance tests detect missing/stale fields and check actual HTTP/stdio discovery
 Do not change schema constraints through the description layer or mutate client
 models. Built-artifact checks must verify these assets outside the checkout.
 
+Specialized previews share deterministic construction over public client models.
+Keep their new/change inputs aligned, test explicit opening/closing sides and leg
+ratios, and compare actual client HTTP bodies with independently specified
+synthetic fixtures. Reusable placement arguments must preserve the normalized
+submitted request and every preview ID; never reconstruct an order from the
+broker preview's descriptive legs. Keep general previews available for complete
+client request coverage.
+
 ## Run checks
 
 Before submitting a pull request, run:
