@@ -26,6 +26,7 @@ from mcp.types import CallToolResult, TextContent
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, ValidationError, model_validator
 
 from etrade_mcp.config import ServerConfig
+from etrade_mcp.validation import ValidationIssue, validation_diagnostics
 
 ErrorCode = Literal[
     "invalid_input",
@@ -69,6 +70,11 @@ class Failure(WireModel):
         description="Sanitized broker diagnostic, possibly truncated; not execution instructions.",
     )
     request_id: str | None = None
+    validation_errors: list[ValidationIssue] = Field(
+        default_factory=list[ValidationIssue],
+        max_length=20,
+        description="Safe local validation details; empty for other errors.",
+    )
 
 
 class Response(WireModel, Generic[T]):
@@ -155,7 +161,11 @@ def broker_diagnostic(value: str | None, secrets: Sequence[str]) -> str | None:
 
 
 def classified_error(
-    error: Exception, *, mutation: bool = False, secrets: Sequence[str] = ()
+    error: Exception,
+    *,
+    mutation: bool = False,
+    secrets: Sequence[str] = (),
+    input_model: type[BaseModel] | None = None,
 ) -> Failure:
     """Keep stable summaries and optional sanitized client-parsed broker diagnostics.
 
@@ -212,6 +222,11 @@ def classified_error(
     return Failure(
         code=code,
         message=messages.get(code, code.replace("_", " ").capitalize() + "."),
+        validation_errors=(
+            validation_diagnostics(error, input_model, client=True)
+            if code == "invalid_input"
+            else []
+        ),
         status_code=error.status_code if isinstance(error, ETradeApiError) else None,
         # Client errors already redact broker OAuth secrets. Restrict reflected
         # metadata further and also exclude the separately configured HTTP secret.

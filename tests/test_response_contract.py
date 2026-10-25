@@ -28,6 +28,12 @@ async def test_native_tool_status_and_output_schema_contract(
             assert set(tool.output_schema["properties"]) == {"data", "error", "meta"}
             assert "ok" not in tool.output_schema.get("required", [])
             assert "broker_message" in tool.output_schema["$defs"]["Failure"]["properties"]
+            assert (
+                tool.output_schema["$defs"]["Failure"]["properties"]["validation_errors"][
+                    "maxItems"
+                ]
+                == 20
+            )
 
         async def verify(name: str, result: CallToolResult, code: str | None = None) -> None:
             data = payload(result)  # Also verifies text equality and the exact envelope fields.
@@ -39,6 +45,10 @@ async def test_native_tool_status_and_output_schema_contract(
             else:
                 assert data["data"] is None and data["error"]["code"] == code
                 assert "fake-private" not in result.model_dump_json()
+                if code == "invalid_input":
+                    assert data["error"]["validation_errors"]
+                else:
+                    assert data["error"]["validation_errors"] == []
                 if name == "market_get_quote" and code == "broker_rejection":
                     assert data["error"]["broker_message"] == "Synthetic broker rejection."
             # The SDK normally skips schema validation for isError results;

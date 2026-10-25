@@ -54,6 +54,7 @@ def main() -> None:
                 "etrade_mcp/server.py",
                 "etrade_mcp/http.py",
                 "etrade_mcp/config.py",
+                "etrade_mcp/tool_logging.py",
                 "etrade_mcp/order_families.py",
                 "etrade_mcp/tools/specialized.py",
             }
@@ -71,6 +72,8 @@ def main() -> None:
                 "README.md",
                 "tests/test_http.py",
                 "tests/test_cli.py",
+                "tests/test_tool_logging.py",
+                "tests/tool_logging_worker.py",
                 "tests/test_specialized_previews.py",
                 "tests/specialized_cases.py",
                 "src/etrade_mcp/order_families.py",
@@ -136,6 +139,13 @@ print(f'Installed etrade-mcp {etrade_mcp.__version__} on Python {sys.version.spl
                 text=True,
             )
             assert version_output.strip() == expected_version
+            help_output = subprocess.check_output(
+                [str(python), "-I", "-m", "etrade_mcp", "serve", "--help"],
+                cwd=outside,
+                env={**environment, "NO_COLOR": "1", "TERM": "dumb"},
+                text=True,
+            )
+            assert "--debug-tool-calls" in help_output
             executable = venv / ("Scripts/etrade-mcp.exe" if os.name == "nt" else "bin/etrade-mcp")
             assert (
                 subprocess.check_output(

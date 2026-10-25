@@ -149,6 +149,7 @@ async def test_real_client_diagnostics_over_mcp(
                     None if case.name == "nonnumeric" else case.broker_code
                 )
                 assert error["broker_message"] == case.expected_message
+                assert error["validation_errors"] == []
                 assert RAW_SENTINEL not in result.model_dump_json()
                 await client.session.validate_tool_result(name, result)
                 if wire == "http":

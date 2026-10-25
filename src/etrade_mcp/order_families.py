@@ -14,6 +14,7 @@ from etrade_python import (
     PreviewOrderRequest,
 )
 from pydantic import Field, field_validator, model_validator
+from pydantic_core import PydanticCustomError
 
 from etrade_mcp.inputs import DecimalString
 from etrade_mcp.responses import WireModel
@@ -42,7 +43,7 @@ class FamilyRequest(WireModel):
     def normalize_symbol(cls, value: str) -> str:
         symbol = OrderProduct.model_validate({"symbol": value, "security_type": "EQ"}).symbol
         if symbol is None:
-            raise ValueError("Symbol is required")
+            raise PydanticCustomError("nonempty", "Symbol is required")
         return symbol
 
     @field_validator("*", mode="after")
@@ -50,11 +51,18 @@ class FamilyRequest(WireModel):
     def validate_family_field(cls, value: Any, info: Any) -> Any:
         if info.field_name == "expiration":
             if len(value) != 10 or value[4] != "-" or value[7] != "-":
-                raise ValueError("Expiration must use YYYY-MM-DD")
-            date.fromisoformat(value)
+                raise PydanticCustomError("expiration_format", "Expiration must use YYYY-MM-DD")
+            try:
+                date.fromisoformat(value)
+            except ValueError:
+                raise PydanticCustomError(
+                    "calendar_date", "Expiration must be a valid calendar date"
+                ) from None
         if info.field_name in {"quantity", "option_quantity"} and cls.family != "equity":
             if value != value.to_integral_value():
-                raise ValueError("Option quantities must be whole contracts")
+                raise PydanticCustomError(
+                    "whole_contracts", "Option quantities must be whole contracts"
+                )
         return value
 
     @model_validator(mode="after")
@@ -64,9 +72,15 @@ class FamilyRequest(WireModel):
         needs_limit = price in {"LIMIT", "STOP_LIMIT", "NET_DEBIT", "NET_CREDIT"}
         needs_stop = price in {"STOP", "STOP_LIMIT"}
         if (self.limit_price is not None) != needs_limit:
-            raise ValueError("Provide limit_price only for limit or net debit/credit pricing")
+            raise PydanticCustomError(
+                "limit_price_required" if needs_limit else "limit_price_unused",
+                "Provide limit_price only for limit or net debit/credit pricing",
+            )
         if (self.stop_price is not None) != needs_stop:
-            raise ValueError("Provide stop_price only for STOP or STOP_LIMIT")
+            raise PydanticCustomError(
+                "stop_price_required" if needs_stop else "stop_price_unused",
+                "Provide stop_price only for STOP or STOP_LIMIT",
+            )
         geometry = {
             "butterfly": ("lower_strike", "middle_strike", "upper_strike"),
             "condor": (
@@ -85,13 +99,15 @@ class FamilyRequest(WireModel):
         }
         strikes = [Fraction(fields[key]) for key in geometry.get(self.family, ())]
         if any(a >= b for a, b in zip(strikes, strikes[1:], strict=False)):
-            raise ValueError("Strikes must strictly increase")
+            raise PydanticCustomError("ascending_strikes", "Strikes must strictly increase")
         if self.family in {"butterfly", "iron_butterfly"}:
             if strikes[1] - strikes[0] != strikes[2] - strikes[1]:
-                raise ValueError("Butterfly wings must have equal widths")
+                raise PydanticCustomError(
+                    "equal_wing_widths", "Butterfly wings must have equal widths"
+                )
         for buy, sell in (("buy_strike", "sell_strike"), ("buy_call_strike", "sell_call_strike")):
             if buy in fields and fields[buy] == fields[sell]:
-                raise ValueError("Buy and sell strikes must differ")
+                raise PydanticCustomError("distinct_strikes", "Buy and sell strikes must differ")
         # Delegate the brokerage request's own validation to the public client.
         self.to_preview()
         return self

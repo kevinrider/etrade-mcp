@@ -109,6 +109,7 @@ is no adapter configuration file or automatic dotenv loading.
 | `ETRADE_MCP_ENABLE_ORDER_EXECUTION` | `false` | `--enable-order-execution` / `--no-enable-order-execution` |
 | `ETRADE_MCP_ENABLE_ALERT_DELETION` | `false` | `--enable-alert-deletion` / `--no-enable-alert-deletion` |
 | `ETRADE_MCP_TOOL_ALLOWLIST` | omitted: all capability-permitted tools | `--tool-allowlist` |
+| `ETRADE_MCP_DEBUG_TOOL_CALLS` | `false` | `--debug-tool-calls` / `--no-debug-tool-calls` |
 
 Broker settings also accept `ETRADE_REQUEST_TIMEOUT_SECONDS` (30) and
 `ETRADE_INACTIVITY_BUFFER_SECONDS` (300), managed by the client. Stdio rejects
@@ -143,6 +144,29 @@ monitoring. Hosts own submission history and reconciliation. After a lost respon
 or uncertain outcome, reconcile with the broker before resubmitting. A restart
 will not recover execution state. Strategy and scheduling stay outside the adapter.
 
+## Debug incoming tool calls
+
+Add `--debug-tool-calls` to your existing server command to print redacted JSON
+diagnostics in the terminal where the server runs:
+
+```sh
+uv run --frozen etrade-mcp serve --debug-tool-calls
+```
+
+This is off by default. You can also set `ETRADE_MCP_DEBUG_TOOL_CALLS=true`;
+`--no-debug-tool-calls` overrides that setting. Both HTTP and stdio write one
+JSON line per event to **stderr**, keeping stdout reserved for MCP traffic.
+HTTP authentication and other startup settings still apply.
+
+Each `tool_call.received` event includes a generated `call_id`, the tool name,
+argument types, and a bounded argument preview. A matching `tool_call.completed`
+event reports success/error status and safe error codes and validation paths.
+Account, order, transaction, alert, and client-order identifiers are masked.
+Credentials and authentication fields are withheld; unknown field names and
+values are omitted, with only their count recorded. Broker response bodies and
+error messages are never included. Selected trading inputs, including symbols,
+prices, quantities, and order settings, are intentionally visible while enabled.
+
 ## Tool and result contract
 
 `server_status` takes `{}` and reports versions, environment/profile, transport,
@@ -164,7 +188,8 @@ Tool results contain matching JSON text and MCP `structuredContent`:
     "status_code": null,
     "broker_code": null,
     "broker_message": null,
-    "request_id": null
+    "request_id": null,
+    "validation_errors": []
   },
   "meta": {
     "environment": "sandbox",
@@ -199,7 +224,8 @@ For example, an order rejection can contain:
   "status_code": 400,
   "broker_code": "51016",
   "broker_message": "Quantity cannot be changed for Buy Write/Spread Orders.",
-  "request_id": null
+  "request_id": null,
+  "validation_errors": []
 }
 ```
 
@@ -228,6 +254,44 @@ that loses a mutation response must reconcile even when no error result arrives.
 Preview failures use ordinary input, authentication, broker, and transport error
 categories. A preview failure does not indicate uncertain trade execution.
 No brokerage mutation tool ships yet.
+
+## Local validation diagnostics
+
+Before a broker request, invalid inputs return `isError: true`, `code: invalid_input`,
+and safe correction details under `error.validation_errors`. For example, an
+invalid equity quantity can produce this error-object excerpt:
+
+```json
+{
+  "code": "invalid_input",
+  "message": "Tool arguments are invalid.",
+  "validation_errors": [
+    {
+      "path": ["request", "quantity"],
+      "code": "greater_than",
+      "message": "Must be greater than 0."
+    }
+  ]
+}
+```
+
+Paths use canonical Python field names and zero-based array indices, even when
+arguments used client aliases. A cross-field rule may point to its containing
+object, such as `["request"]` for a missing limit price. Details cover missing
+fields, incorrect types, decimal strings, supported choices, order price rules,
+expiration dates, option quantities, and strike relationships. Recognized client
+validation failures before HTTP dispatch use the same structure. Unrecognized
+reasons receive safe generic guidance; reported details are not a promise that
+all invalid combinations have been found in one pass.
+
+The server never includes submitted values, unknown field names, arbitrary
+exception messages/context, or internal union labels in these details. Unknown
+keys point to the nearest recognized parent. Details are deduplicated and limited
+to 20 entries; if more remain, the last entry is an omission notice. Paths contain
+at most 16 components and messages at most 256 characters. Non-validation errors
+have an empty list; local validation errors have no broker message. Protocol-level
+JSON-RPC errors keep their existing format. This diagnostic change does not alter
+accepted inputs, tool permissions, broker requests, or retry behavior.
 
 ## Tool guidance
 

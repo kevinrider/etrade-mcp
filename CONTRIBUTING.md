@@ -51,6 +51,13 @@ diagnostics to stderr. Keep credentials and customer data out of results, errors
 logs, examples, and submitted files. Do not commit `.env` files or live brokerage
 recordings.
 
+Tool-call diagnostics are explicitly opt-in and use the dedicated
+`etrade_mcp.tool_calls` logger. Preserve schema-based redaction, size limits,
+stderr output, and argument types without modifying submitted arguments. Do not
+log response bodies, arbitrary exceptions, unknown fields, or enable protocol/
+HTTP wire logging. Test that diagnostic formatting and sink failures cannot
+change tool results, and that both transports retain the same behavior.
+
 Maintain the [README tool coverage table](README.md#tool-coverage) manually when
 client operations or MCP tools change. Link implemented tools to relevant tests,
 distinguish planned tools, explain intentional omissions, and document coverage

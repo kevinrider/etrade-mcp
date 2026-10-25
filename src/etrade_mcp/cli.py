@@ -14,6 +14,7 @@ from etrade_mcp._version import __version__
 from etrade_mcp.config import ConfigurationError, ServerConfig, ServerSettings
 from etrade_mcp.http import create_http_app
 from etrade_mcp.server import create_server
+from etrade_mcp.tool_logging import configure_tool_logging
 
 app = typer.Typer(no_args_is_help=True, pretty_exceptions_enable=False)
 
@@ -35,6 +36,9 @@ def serve(
     enable_order_execution: Annotated[bool | None, typer.Option()] = None,
     enable_alert_deletion: Annotated[bool | None, typer.Option()] = None,
     tool_allowlist: Annotated[str | None, typer.Option()] = None,
+    debug_tool_calls: Annotated[
+        bool | None, typer.Option(help="Log redacted tool calls to stderr.")
+    ] = None,
 ) -> None:
     """Serve one trusted credential profile over loopback HTTP or stdio."""
     options: dict[str, Any] = {
@@ -45,6 +49,7 @@ def serve(
         "enable_order_execution": enable_order_execution,
         "enable_alert_deletion": enable_alert_deletion,
         "tool_allowlist": tool_allowlist,
+        "debug_tool_calls": debug_tool_calls,
     }
     try:
         settings = ServerSettings(**{k: v for k, v in options.items() if v is not None})
@@ -67,6 +72,7 @@ def serve(
     # Library debug/error tracebacks may contain caller-supplied data. Adapter
     # errors are sanitized results; SDK internals only emit critical diagnostics.
     logging.getLogger("mcp").setLevel(logging.CRITICAL)
+    configure_tool_logging(settings.debug_tool_calls)
     try:
         if settings.transport == "stdio":
             server.run(transport="stdio")

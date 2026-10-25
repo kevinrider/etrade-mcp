@@ -30,6 +30,7 @@ class ServerSettings(BaseSettings):
     http_bearer_token: SecretStr | None = Field(default=None, repr=False)
     enable_order_execution: bool = False
     enable_alert_deletion: bool = False
+    debug_tool_calls: bool = False
     # A string preserves the difference between omitted and explicitly empty.
     tool_allowlist: str | None = None
 

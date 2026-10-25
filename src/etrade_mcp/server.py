@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib.metadata import version
 from typing import Annotated, Any, TypeVar
 
@@ -29,6 +29,8 @@ from etrade_mcp.responses import (
     error_result,
     success_result,
 )
+from etrade_mcp.tool_logging import ToolTrace
+from etrade_mcp.validation import validation_diagnostics
 
 ClientFactory = Callable[[ETradeSettings, str], ETradeClient]
 T = TypeVar("T", bound=BaseModel)
@@ -39,6 +41,7 @@ class Runtime:
     config: ServerConfig
     policy: ToolPolicy
     client: ETradeClient
+    inputs: dict[str, type[BaseModel]] = field(default_factory=dict[str, type[BaseModel]])
 
 
 @dataclass(frozen=True)
@@ -103,6 +106,7 @@ async def invoke(
             classified_error(
                 error,
                 mutation=mutation,
+                input_model=state.inputs.get(name),
                 secrets=(
                     state.config.broker.consumer_key.get_secret_value(),
                     state.config.broker.consumer_secret.get_secret_value(),
@@ -146,22 +150,47 @@ class ToolBoundary:
             return await call_next(ctx)
         params = ctx.params or {}
         name = params.get("name")
+        model = self.inputs.get(name) if isinstance(name, str) else None
+        denied = self.policy.denial(name) if isinstance(name, str) else None
+        trace = ToolTrace(
+            self.config, name if model is not None else None, model if denied is None else None
+        )
+        arguments = params.get("arguments", {})
+        trace.received(arguments)
         if not isinstance(name, str):
-            return error_result(
+            result = error_result(
                 self.config, Failure(code="invalid_input", message="Tool name is required.")
             )
-        denied = self.policy.denial(name)
+            trace.finished(result)
+            return result
         if denied is not None:
-            return error_result(self.config, denied)
+            result = error_result(self.config, denied)
+            trace.finished(result)
+            return result
         try:
-            arguments = params.get("arguments", {})
             self.inputs[name].model_validate(arguments)
-        except ValidationError:
-            return error_result(
-                self.config, Failure(code="invalid_input", message="Tool arguments are invalid.")
+        except ValidationError as error:
+            result = error_result(
+                self.config,
+                Failure(
+                    code="invalid_input",
+                    message="Tool arguments are invalid.",
+                    validation_errors=validation_diagnostics(error, self.inputs[name]),
+                ),
             )
+            trace.finished(result)
+            return result
         # Handler invoke() catches errors before the SDK can log their contents.
-        return await call_next(ctx)
+        try:
+            result = await call_next(ctx)
+        except asyncio.CancelledError:
+            trace.finished(outcome="cancelled")
+            raise
+        except Exception:
+            trace.finished(outcome="exception")
+            raise
+        trace.finished(result)
+        return result
 
 
 def default_client(settings: ETradeSettings, profile: str) -> ETradeClient:
@@ -191,7 +220,7 @@ def create_server(
     @asynccontextmanager
     async def lifespan(server: MCPServer[Runtime]) -> AsyncGenerator[Runtime]:
         async with client_factory(config.broker, config.server.profile) as client:
-            yield Runtime(config, policy, client)
+            yield Runtime(config, policy, client, {spec.name: spec.input_model for spec in specs})
 
     server = AdapterServer(
         inputs={spec.name: spec.input_model for spec in specs},

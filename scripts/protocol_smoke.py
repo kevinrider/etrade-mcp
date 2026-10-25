@@ -64,6 +64,10 @@ async def inspect(client: Client) -> list[Tool]:
         diagnostic = tool.output_schema["$defs"]["Failure"]["properties"]["broker_message"]
         assert diagnostic["default"] is None
         assert diagnostic["anyOf"][0]["maxLength"] == 1000
+        assert (
+            tool.output_schema["$defs"]["Failure"]["properties"]["validation_errors"]["maxItems"]
+            == 20
+        )
 
     async def check_result(name: str, result: CallToolResult) -> None:
         assert result.structured_content is not None
@@ -86,6 +90,7 @@ async def inspect(client: Client) -> list[Tool]:
     assert unauthenticated.structured_content is not None
     assert unauthenticated.structured_content["error"]["code"] == "authentication_required"
     assert unauthenticated.structured_content["error"]["broker_message"] is None
+    assert unauthenticated.structured_content["error"]["validation_errors"] == []
     await check_result("market_get_quote", unauthenticated)
     preview = await client.call_tool(
         "orders_preview",
@@ -135,6 +140,8 @@ async def inspect(client: Client) -> list[Tool]:
     invalid = await client.call_tool("server_status", {"unknown": "fake-private-input"})
     assert invalid.is_error
     assert "fake-private-input" not in invalid.model_dump_json()
+    assert invalid.structured_content is not None
+    assert invalid.structured_content["error"]["validation_errors"][0]["code"] == "extra_forbidden"
     await check_result("server_status", invalid)
     return tools
 

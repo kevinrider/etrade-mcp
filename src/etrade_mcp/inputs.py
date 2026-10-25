@@ -33,6 +33,7 @@ from pydantic import (
     WithJsonSchema,
     model_validator,
 )
+from pydantic_core import PydanticCustomError
 
 
 class StrictRequest(BaseModel):
@@ -49,14 +50,16 @@ class StrictRequest(BaseModel):
                 alias = field.alias
                 if alias and alias != name and name in value and alias in value:
                     if value[name] != value[alias]:
-                        raise ValueError("Conflicting field spellings")
+                        raise PydanticCustomError(
+                            "conflicting_aliases", "Conflicting field spellings"
+                        )
                     value = {key: item for key, item in value.items() if key != alias}
         return value
 
 
 def decimal_string(value: Any) -> Any:
     if not isinstance(value, str):
-        raise ValueError("A decimal string is required")
+        raise PydanticCustomError("decimal_string", "A decimal string is required")
     return value
 
 
@@ -137,7 +140,7 @@ class PreviewLots(OrderLots, StrictRequest):
             names = [name for name in ("lot", "lots", "Lot") if name in data]
             if names:
                 if any(data[name] != data[names[0]] for name in names[1:]):
-                    raise ValueError("Conflicting field spellings")
+                    raise PydanticCustomError("conflicting_aliases", "Conflicting field spellings")
                 return {
                     **{name: item for name, item in data.items() if name not in names},
                     "lot": data[names[0]],
