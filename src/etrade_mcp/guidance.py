@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter
 
+from etrade_mcp.input_schema import inline_input_schema
+
 
 class GuidanceCatalog(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -56,7 +58,7 @@ def described_input_schema(name: str, model: type[BaseModel]) -> dict[str, Any]:
     schema = model.model_json_schema(by_alias=False)
     description = tool_description(name)
     if description is None:
-        return schema
+        return inline_input_schema(schema)
     describe_fields(schema, model.__name__)
     definitions: dict[str, Any] = schema.get("$defs", {})
     for model_name, definition in definitions.items():
@@ -65,4 +67,4 @@ def described_input_schema(name: str, model: type[BaseModel]) -> dict[str, Any]:
     for example in examples:
         model.model_validate(example)
     schema["examples"] = examples
-    return schema
+    return inline_input_schema(schema)

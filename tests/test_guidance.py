@@ -11,7 +11,7 @@ from etrade_python import ETradeSettings, PreviewOrderRequest
 from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from etrade_mcp.config import ServerConfig
 from etrade_mcp.guidance import (
@@ -31,17 +31,42 @@ from tests.preview_cases import REQUESTS
 class InstanceValidator(Protocol):
     def validate(self, instance: object) -> None: ...
 
+    def is_valid(self, instance: object) -> bool: ...
 
-def without_guidance(value: Any) -> Any:
+
+def assert_inline_guidance(value: Any) -> None:
     if isinstance(value, dict):
         value = cast(dict[str, Any], value)
-        return {
-            k: without_guidance(v) for k, v in value.items() if k not in {"description", "examples"}
-        }
-    if isinstance(value, list):
+        assert "$ref" not in value and "$defs" not in value
+        for field in value.get("properties", {}).values():
+            assert isinstance(field.get("description"), str) and field["description"].strip()
+        for child in value.values():
+            assert_inline_guidance(child)
+    elif isinstance(value, list):
         value = cast(list[Any], value)
-        return [without_guidance(v) for v in value]
-    return value
+        for child in value:
+            assert_inline_guidance(child)
+
+
+def argument_variants(example: dict[str, Any]) -> list[Any]:
+    variants: list[Any] = [None, [], "{}", 0, {}, {**example, "unknown_field": True}]
+    for name in example:
+        missing = deepcopy(example)
+        del missing[name]
+        variants.append(missing)
+    request = example.get("request")
+    bad_values: list[Any] = [None, 0, True, {}, [], "invalid-choice"]
+    if isinstance(request, dict):
+        request = cast(dict[str, Any], request)
+        variants.append({**example, "request": json.dumps(request)})
+        for name in request:
+            missing = deepcopy(request)
+            del missing[name]
+            variants.append({**example, "request": missing})
+            for value in bad_values:
+                variants.append({**example, "request": {**request, name: value}})
+        variants.append({**example, "request": {**request, "unknown_field": True}})
+    return variants
 
 
 def specs() -> list[ToolSpec]:
@@ -55,7 +80,7 @@ def test_guidance_coverage_examples_and_schema_constraints() -> None:
     for spec in specs():
         original = spec.input_model.model_json_schema(by_alias=False)
         schema = described_input_schema(spec.name, spec.input_model)
-        assert without_guidance(schema) == without_guidance(original)
+        assert_inline_guidance(schema)
         assert spec.input_model.model_json_schema(by_alias=False) == original
         description = tool_description(spec.name)
         assert description and len(description) <= 4096
@@ -63,15 +88,17 @@ def test_guidance_coverage_examples_and_schema_constraints() -> None:
         assert examples and examples == schema["examples"]
         Draft202012Validator.check_schema(schema)
         validator = cast(InstanceValidator, Draft202012Validator(schema))
+        original_validator = cast(InstanceValidator, Draft202012Validator(original))
+        inline_validator = cast(InstanceValidator, Draft202012Validator(schema))
         for example in examples:
             validator.validate(example)
             spec.input_model.model_validate(example)
-        definitions = {spec.input_model.__name__: schema, **schema.get("$defs", {})}
+            for variant in argument_variants(example):
+                assert original_validator.is_valid(variant) == inline_validator.is_valid(variant)
+        definitions = {spec.input_model.__name__: original, **original.get("$defs", {})}
         models.update(definitions)
         for name, definition in definitions.items():
             assert set(catalog().models[name]) == set(definition.get("properties", {}))
-            for field in definition.get("properties", {}).values():
-                assert isinstance(field["description"], str) and field["description"].strip()
     assert models == set(catalog().models)
 
 
@@ -84,6 +111,25 @@ def test_injected_tool_guidance_and_stale_references() -> None:
         describe_fields({"properties": {"stale_field": {}}}, "EmptyInput")
     with pytest.raises(ValidationError):
         description_examples("```json\n[]\n```")
+
+
+def test_injected_nested_models_are_inlined_without_catalog_guidance() -> None:
+    class NestedRequest(BaseModel):
+        symbol: str
+
+    class InjectedInput(BaseModel):
+        request: NestedRequest
+
+    original = InjectedInput.model_json_schema()
+    schema = described_input_schema("injected_probe", InjectedInput)
+    assert schema["properties"]["request"] == {
+        "properties": {"symbol": {"title": "Symbol", "type": "string"}},
+        "required": ["symbol"],
+        "title": "NestedRequest",
+        "type": "object",
+    }
+    assert "$defs" not in schema
+    assert InjectedInput.model_json_schema() == original
 
 
 @pytest.mark.parametrize("wire", ["http", "stdio"])
@@ -99,6 +145,8 @@ async def test_guidance_through_actual_discovery(
         for tool in tools:
             assert tool.description == expected[tool.name].description
             assert tool.input_schema == expected[tool.name].input_schema
+            assert_inline_guidance(tool.input_schema)
+            Draft202012Validator.check_schema(tool.input_schema)
             for example in tool.input_schema["examples"]:
                 cast(InstanceValidator, Draft202012Validator(tool.input_schema)).validate(example)
         # Tool calls retain the existing error and output contracts after enrichment.
