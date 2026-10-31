@@ -2,9 +2,7 @@
 <img src="https://repository-images.githubusercontent.com/1423904536/9aac8c54-260f-4d70-812b-0fb110af0394" alt="etrade-mcp project banner" width="640">
 </div>
 
-<h1 align="center">etrade-mcp</h1>
-
-<p align="center"><strong>E*TRADE, one tool call away.</strong></p>
+<h1 align="center">etrade-mcp: E*TRADE, one tool call away.</h1>
 
 <div align="center">
 <a href="https://github.com/kevinrider/etrade-mcp/releases"><img src="https://img.shields.io/github/release/kevinrider/etrade-mcp.svg?style=flat-square" alt="Latest Version"></a>
