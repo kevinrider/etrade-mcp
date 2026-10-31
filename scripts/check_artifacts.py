@@ -55,6 +55,9 @@ def main() -> None:
                 "etrade_mcp/http.py",
                 "etrade_mcp/config.py",
                 "etrade_mcp/tool_logging.py",
+                "etrade_mcp/input_schema.py",
+                "etrade_mcp/tools/orders.py",
+                "etrade_mcp/tools/alerts.py",
                 "etrade_mcp/order_families.py",
                 "etrade_mcp/tools/specialized.py",
             }
@@ -74,6 +77,9 @@ def main() -> None:
                 "tests/test_cli.py",
                 "tests/test_tool_logging.py",
                 "tests/tool_logging_worker.py",
+                "tests/test_mutations.py",
+                "tests/mutation_worker.py",
+                "tests/mutation_cases.py",
                 "tests/test_specialized_previews.py",
                 "tests/specialized_cases.py",
                 "src/etrade_mcp/order_families.py",
@@ -97,7 +103,7 @@ from etrade_mcp.guidance import catalog, tool_description
 assert etrade_mcp.__version__ == version('etrade-mcp')
 assert metadata('etrade-mcp')['License-Expression'] == 'Apache-2.0'
 assert files('etrade_mcp').joinpath('py.typed').is_file()
-assert len(catalog().tools) == 34
+assert len(catalog().tools) == 38
 for name in catalog().tools:
     assert tool_description(name)
 assert Path(etrade_mcp.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())

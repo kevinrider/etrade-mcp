@@ -23,8 +23,8 @@ from etrade_mcp.guidance import (
 )
 from etrade_mcp.inputs import PreviewRequest
 from etrade_mcp.server import EmptyInput, ToolSpec, create_server, server_status
-from etrade_mcp.tools import preview_tools, read_tools
-from tests.helpers import DEFAULT_TOOLS, authenticated_http, http_server
+from etrade_mcp.tools import mutation_tools, preview_tools, read_tools
+from tests.helpers import ALL_TOOLS, DEFAULT_TOOLS, authenticated_http, http_server
 from tests.preview_cases import REQUESTS
 
 
@@ -70,11 +70,16 @@ def argument_variants(example: dict[str, Any]) -> list[Any]:
 
 
 def specs() -> list[ToolSpec]:
-    return [ToolSpec("server_status", server_status, EmptyInput), *read_tools(), *preview_tools()]
+    return [
+        ToolSpec("server_status", server_status, EmptyInput),
+        *read_tools(),
+        *preview_tools(),
+        *mutation_tools(),
+    ]
 
 
 def test_guidance_coverage_examples_and_schema_constraints() -> None:
-    assert set(catalog().tools) == DEFAULT_TOOLS
+    assert set(catalog().tools) == ALL_TOOLS
     assert len(catalog().tools) == len(set(catalog().tools))
     models: set[str] = set()
     for spec in specs():

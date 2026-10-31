@@ -52,6 +52,9 @@ SPECIALIZED_TOOLS = {
     f"orders_preview_{prefix}{family}" for family in ORDER_FAMILIES for prefix in ("", "change_")
 }
 DEFAULT_TOOLS = READ_TOOLS | PREVIEW_TOOLS | SPECIALIZED_TOOLS
+ORDER_MUTATIONS = {"orders_place", "orders_place_change", "orders_cancel"}
+MUTATION_TOOLS = ORDER_MUTATIONS | {"alerts_delete"}
+ALL_TOOLS = DEFAULT_TOOLS | MUTATION_TOOLS
 
 
 @asynccontextmanager

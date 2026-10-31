@@ -1,5 +1,5 @@
 import copy
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from typing import Any, Literal
 
 import httpx
@@ -20,7 +20,12 @@ class FakeAuth:
         request.headers["Authorization"] = "OAuth fake-test-authorization"
 
 
-def broker_factory(handler: Callable[[httpx.Request], httpx.Response]) -> ClientFactory:
+def broker_factory(
+    handler: (
+        Callable[[httpx.Request], httpx.Response]
+        | Callable[[httpx.Request], Coroutine[None, None, httpx.Response]]
+    ),
+) -> ClientFactory:
     def factory(settings: ETradeSettings, profile: str) -> ETradeClient:
         return ETradeClient(
             settings,

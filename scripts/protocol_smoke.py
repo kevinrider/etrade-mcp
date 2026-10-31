@@ -19,9 +19,9 @@ from mcp.client.streamable_http import streamable_http_client
 from mcp.types import CallToolResult, TextContent, Tool
 
 
-async def inspect(client: Client) -> list[Tool]:
+async def inspect(client: Client, *, enabled: bool = False) -> list[Tool]:
     tools = (await client.list_tools()).tools
-    assert {tool.name for tool in tools} == {
+    expected = {
         "server_status",
         "accounts_list",
         "accounts_get_balance",
@@ -53,9 +53,15 @@ async def inspect(client: Client) -> list[Tool]:
         )
         for prefix in ("", "change_")
     }
+    mutations = {"orders_place", "orders_place_change", "orders_cancel", "alerts_delete"}
+    if enabled:
+        expected |= mutations
+    assert {tool.name for tool in tools} == expected
     for tool in tools:
         assert tool.description and len(tool.description) <= 4096
         assert tool.input_schema.get("examples")
+        assert '"$ref"' not in json.dumps(tool.input_schema)
+        assert '"$defs"' not in json.dumps(tool.input_schema)
         for definition in [tool.input_schema, *tool.input_schema.get("$defs", {}).values()]:
             for field in definition.get("properties", {}).values():
                 assert field.get("description")
@@ -83,8 +89,8 @@ async def inspect(client: Client) -> list[Tool]:
     data = result.structured_content["data"]
     assert isinstance(data, dict)
     assert data["credential_status"] == "missing"
-    assert data["order_execution_enabled"] is False
-    assert data["alert_deletion_enabled"] is False
+    assert data["order_execution_enabled"] is enabled
+    assert data["alert_deletion_enabled"] is enabled
     unauthenticated = await client.call_tool("market_get_quote", {"symbol": "AAPL"})
     assert unauthenticated.is_error
     assert unauthenticated.structured_content is not None
@@ -143,6 +149,20 @@ async def inspect(client: Client) -> list[Tool]:
     assert invalid.structured_content is not None
     assert invalid.structured_content["error"]["validation_errors"][0]["code"] == "extra_forbidden"
     await check_result("server_status", invalid)
+    for name in sorted(mutations):
+        arguments = (
+            next(tool for tool in tools if tool.name == name).input_schema["examples"][0]
+            if enabled
+            else {}
+        )
+        failure = await client.call_tool(name, arguments)
+        assert failure.is_error and failure.structured_content is not None
+        assert failure.structured_content["error"]["code"] == (
+            "authentication_required" if enabled else "execution_disabled"
+        )
+        assert failure.structured_content["error"]["alert_deletion_result"] is None
+        if enabled:
+            await check_result(name, failure)
     return tools
 
 
@@ -157,74 +177,83 @@ async def main() -> None:
         PYTHON_KEYRING_BACKEND="keyring.backends.null.Keyring",
     )
     with tempfile.TemporaryDirectory(prefix="etrade-mcp-smoke-") as temporary:
-        environment["XDG_CACHE_HOME"] = temporary
-        async with Client(
-            StdioServerParameters(
-                command=sys.executable,
-                args=["-I", "-m", "etrade_mcp", "serve", "--transport", "stdio"],
+        for enabled in (False, True):
+            environment.pop("ETRADE_MCP_HTTP_BEARER_TOKEN", None)
+            environment["ETRADE_MCP_ENABLE_ORDER_EXECUTION"] = str(enabled).lower()
+            environment["ETRADE_MCP_ENABLE_ALERT_DELETION"] = str(enabled).lower()
+            environment["XDG_CACHE_HOME"] = temporary
+            async with Client(
+                StdioServerParameters(
+                    command=sys.executable,
+                    args=["-I", "-m", "etrade_mcp", "serve", "--transport", "stdio"],
+                    env=environment,
+                    cwd=temporary,
+                )
+            ) as client:
+                stdio_tools = await inspect(client, enabled=enabled)
+
+            with socket.socket() as reserved:
+                reserved.bind(("127.0.0.1", 0))
+                port = int(reserved.getsockname()[1])
+            token = "fake-smoke-http-secret"
+            environment["ETRADE_MCP_HTTP_BEARER_TOKEN"] = token
+            process = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-I",
+                "-m",
+                "etrade_mcp",
+                "serve",
+                "--port",
+                str(port),
                 env=environment,
                 cwd=temporary,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
-        ) as client:
-            stdio_tools = await inspect(client)
-
-        with socket.socket() as reserved:
-            reserved.bind(("127.0.0.1", 0))
-            port = int(reserved.getsockname()[1])
-        token = "fake-smoke-http-secret"
-        environment["ETRADE_MCP_HTTP_BEARER_TOKEN"] = token
-        process = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "-I",
-            "-m",
-            "etrade_mcp",
-            "serve",
-            "--port",
-            str(port),
-            env=environment,
-            cwd=temporary,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        try:
-            async with asyncio.timeout(15):
-                while True:
-                    if process.returncode is not None:
-                        raise RuntimeError("Installed HTTP server exited during startup")
-                    try:
-                        _, writer = await asyncio.open_connection("127.0.0.1", port)
-                    except OSError:
-                        await asyncio.sleep(0.05)
-                    else:
-                        writer.close()
-                        await writer.wait_closed()
-                        break
-
-            @asynccontextmanager
-            async def connection() -> AsyncGenerator[tuple[Any, Any]]:
-                async with httpx2.AsyncClient(
-                    headers={"Authorization": f"Bearer {token}"}, trust_env=False
-                ) as http:
-                    async with streamable_http_client(
-                        f"http://127.0.0.1:{port}/mcp", http_client=http
-                    ) as streams:
-                        yield streams[0], streams[1]
-
-            async with Client(connection()) as client:
-                assert await inspect(client) == stdio_tools
-        finally:
-            if process.returncode is None:
-                process.terminate()
             try:
-                stdout, stderr = await asyncio.wait_for(process.communicate(), 10)
-            except TimeoutError:
-                process.kill()
-                await process.communicate()
-                raise
-            assert stdout == b""
-            for secret in (token, "fake-smoke-secret"):
-                assert secret.encode() not in stderr
-        print("Installed stdio and authenticated HTTP discovery/invocation/schema parity passed")
+                async with asyncio.timeout(15):
+                    while True:
+                        if process.returncode is not None:
+                            raise RuntimeError("Installed HTTP server exited during startup")
+                        try:
+                            _, writer = await asyncio.open_connection("127.0.0.1", port)
+                        except OSError:
+                            await asyncio.sleep(0.05)
+                        else:
+                            writer.close()
+                            await writer.wait_closed()
+                            break
+
+                @asynccontextmanager
+                async def connection(
+                    port: int = port,
+                    token: str = token,
+                ) -> AsyncGenerator[tuple[Any, Any]]:
+                    async with httpx2.AsyncClient(
+                        headers={"Authorization": f"Bearer {token}"}, trust_env=False
+                    ) as http:
+                        async with streamable_http_client(
+                            f"http://127.0.0.1:{port}/mcp", http_client=http
+                        ) as streams:
+                            yield streams[0], streams[1]
+
+                async with Client(connection()) as client:
+                    assert await inspect(client, enabled=enabled) == stdio_tools
+            finally:
+                if process.returncode is None:
+                    process.terminate()
+                try:
+                    stdout, stderr = await asyncio.wait_for(process.communicate(), 10)
+                except TimeoutError:
+                    process.kill()
+                    await process.communicate()
+                    raise
+                assert stdout == b""
+                for secret in (token, "fake-smoke-secret"):
+                    assert secret.encode() not in stderr
+            print(
+                "Installed stdio and authenticated HTTP discovery/invocation/schema parity passed"
+            )
 
 
 if __name__ == "__main__":
