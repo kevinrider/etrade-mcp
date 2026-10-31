@@ -3,7 +3,7 @@
 A typed, async MCP adapter over [etrade-python](https://pypi.org/project/etrade-python/).
 Python 3.11–3.14; loopback Streamable HTTP and stdio.
 
-**Alpha: Milestone 5.** All 13 client-supported brokerage reads, 20 order
+**Alpha: Milestone 6.** All 13 client-supported brokerage reads, 20 order
 preview tools, and `server_status` are available over both transports: 34 tools
 by default. Three order mutation tools and independent alert deletion bring the
 complete catalog to 38 tools when both execution capabilities are enabled.
@@ -626,8 +626,21 @@ public request models. `test_preview_nested_field_coverage_and_schema` in
 field, including nested models. Its protocol cases cover equity, options, verticals,
 three-leg orders, iron condors, buy-writes, mixed closing/opening legs, multiple
 order entries, and alternate sizing. Fixtures are synthetic client-valid contracts,
-not evidence that the broker accepts every combination. Mutation coverage follows
-in later milestones.
+not evidence that the broker accepts every combination. Mutation mapping,
+permissions, partial failures, and uncertain outcomes are covered by
+[tests/test_mutations.py](tests/test_mutations.py).
+
+The final protocol audit in [tests/test_protocol_audit.py](tests/test_protocol_audit.py)
+adds every read operation over actual stdio in both supported protocol modes,
+focused/full/empty catalog enforcement over both transports, explicit pagination
+through terminal empty pages, HTTP socket loss after dispatch, and killed-process
+restart without mutation replay. Its recovery reads and explicit repeated calls
+use synthetic broker responses; they do not establish actual execution or fills.
+Existing HTTP access-control, response-contract, logging, and large-response tests
+remain in [tests/test_http.py](tests/test_http.py),
+[tests/test_response_contract.py](tests/test_response_contract.py),
+[tests/test_tool_logging.py](tests/test_tool_logging.py), and
+[tests/test_large_responses.py](tests/test_large_responses.py).
 
 ## Development and verification
 
