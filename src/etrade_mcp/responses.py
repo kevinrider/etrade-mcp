@@ -6,13 +6,14 @@ import json
 import re
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar, cast
 from urllib.parse import quote, quote_plus, unquote
 
 from etrade_python import (
     AuthenticationRequired,
     AuthorizationExpired,
     CredentialCoordinationError,
+    DeleteAlertsResponse,
     ETradeApiError,
     ETradeAuthenticationError,
     ETradeNotFoundError,
@@ -74,6 +75,10 @@ class Failure(WireModel):
         default_factory=list[ValidationIssue],
         max_length=20,
         description="Safe local validation details; empty for other errors.",
+    )
+    alert_deletion_result: DeleteAlertsResponse | None = Field(
+        default=None,
+        description="Complete broker deletion result for reported failures or an unclear outcome.",
     )
 
 
@@ -263,4 +268,33 @@ def success_result(config: ServerConfig, data: BaseModel) -> CallToolResult:
 
 
 def error_result(config: ServerConfig, failure: Failure) -> CallToolResult:
+    if failure.alert_deletion_result is not None:
+        # This is modeled broker data from an HTTP-successful response, so it
+        # has not gone through the client's HTTP-error diagnostic redactor.
+        token = config.server.http_bearer_token
+        secrets = (
+            config.broker.consumer_key.get_secret_value(),
+            config.broker.consumer_secret.get_secret_value(),
+            token.get_secret_value() if token is not None else "",
+        )
+
+        def clean(value: Any) -> Any:
+            if isinstance(value, str):
+                # Apply the same bounded text redaction as other broker error
+                # diagnostics; preserve all fields and failed-alert IDs.
+                return (
+                    (broker_diagnostic(value, secrets) or "[REDACTED]") if value.strip() else value
+                )
+            if isinstance(value, dict):
+                return {
+                    clean(key): clean(item) for key, item in cast(dict[str, Any], value).items()
+                }
+            if isinstance(value, list):
+                return [clean(item) for item in cast(list[Any], value)]
+            return value
+
+        result = DeleteAlertsResponse.model_validate(
+            clean(failure.alert_deletion_result.model_dump(mode="json", by_alias=True))
+        )
+        failure = failure.model_copy(update={"alert_deletion_result": result})
     return _tool_result(Response[WireModel](error=failure, meta=metadata(config)), is_error=True)

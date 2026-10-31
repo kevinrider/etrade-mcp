@@ -86,7 +86,11 @@ class Status(WireModel):
 
 
 async def invoke(
-    name: str, state: Runtime, operation: Callable[[], Awaitable[T]]
+    name: str,
+    state: Runtime,
+    operation: Callable[[], Awaitable[T]],
+    *,
+    result_error: Callable[[T], Failure | None] | None = None,
 ) -> CallToolResult:
     """Handler-side policy plus a sanitized error boundary. Never retries calls."""
     denied = state.policy.denial(name)
@@ -95,6 +99,10 @@ async def invoke(
     mutation = state.policy.capabilities[name] in {"order_execution", "alert_deletion"}
     try:
         data = await operation()
+        if result_error is not None:
+            failure = result_error(data)
+            if failure is not None:
+                return error_result(state.config, failure)
     except asyncio.CancelledError:
         # Let MCP cancellation/shutdown propagate. A lost response cannot certify
         # whether a future mutation was submitted; the host owns reconciliation.
@@ -204,12 +212,17 @@ def create_server(
     tools: Sequence[ToolSpec] | None = None,
 ) -> MCPServer[Runtime]:
     """Build the same server for either transport; injection is for library tests."""
-    from etrade_mcp.tools import preview_tools, read_tools
+    from etrade_mcp.tools import mutation_tools, preview_tools, read_tools
 
     specs = (
         list(tools)
         if tools is not None
-        else [ToolSpec("server_status", server_status, EmptyInput), *read_tools(), *preview_tools()]
+        else [
+            ToolSpec("server_status", server_status, EmptyInput),
+            *read_tools(),
+            *preview_tools(),
+            *mutation_tools(),
+        ]
     )
     if len({spec.name for spec in specs}) != len(specs):
         from etrade_mcp.config import ConfigurationError

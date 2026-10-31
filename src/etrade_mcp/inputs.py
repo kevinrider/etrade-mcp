@@ -17,7 +17,9 @@ from etrade_python import (
     OrderLots,
     OrderProduct,
     OrdersRequest,
+    PlaceOrderRequest,
     PortfolioRequest,
+    PreviewId,
     PreviewOrderRequest,
     ProductLookupRequest,
     QuotesRequest,
@@ -204,4 +206,19 @@ class PreviewDetail(OrderDetailRequest, StrictRequest):
 class PreviewRequest(PreviewOrderRequest, StrictRequest):
     orders: list[Annotated[OrderDetailRequest, ValidateAs(PreviewDetail, _validated_model)]] = (
         Field(alias="Order")
+    )
+
+
+class PlacementPreviewId(PreviewId, StrictRequest):
+    pass
+
+
+class PlacementRequest(PlaceOrderRequest, PreviewRequest):
+    # Keep the client's placement validators and reuse the preview's strict
+    # nested inputs, including supported detail/instrument extensions.
+    orders: list[Annotated[OrderDetailRequest, ValidateAs(PreviewDetail, _validated_model)]] = (
+        Field(alias="Order")
+    )
+    preview_ids: list[Annotated[PreviewId, ValidateAs(PlacementPreviewId, _validated_model)]] = (
+        Field(alias="PreviewIds", min_length=1)
     )

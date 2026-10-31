@@ -7,7 +7,14 @@ from etrade_mcp.tools.accounts import (
     accounts_get_balance,
     accounts_list,
 )
-from etrade_mcp.tools.alerts import AlertsGetInput, AlertsListInput, alerts_get, alerts_list
+from etrade_mcp.tools.alerts import (
+    AlertsDeleteInput,
+    AlertsGetInput,
+    AlertsListInput,
+    alerts_delete,
+    alerts_get,
+    alerts_list,
+)
 from etrade_mcp.tools.market import (
     MarketGetOptionChainInput,
     MarketGetOptionExpirationsInput,
@@ -21,10 +28,16 @@ from etrade_mcp.tools.market import (
     market_lookup_product,
 )
 from etrade_mcp.tools.orders import (
+    OrdersCancelInput,
     OrdersListInput,
+    OrdersPlaceChangeInput,
+    OrdersPlaceInput,
     OrdersPreviewChangeInput,
     OrdersPreviewInput,
+    orders_cancel,
     orders_list,
+    orders_place,
+    orders_place_change,
     orders_preview,
     orders_preview_change,
 )
@@ -67,4 +80,15 @@ def preview_tools() -> list[ToolSpec]:
         ToolSpec(
             "orders_preview_change", orders_preview_change, OrdersPreviewChangeInput, "preview"
         ),
+    ]
+
+
+def mutation_tools() -> list[ToolSpec]:
+    return [
+        ToolSpec("orders_place", orders_place, OrdersPlaceInput, "order_execution"),
+        ToolSpec(
+            "orders_place_change", orders_place_change, OrdersPlaceChangeInput, "order_execution"
+        ),
+        ToolSpec("orders_cancel", orders_cancel, OrdersCancelInput, "order_execution"),
+        ToolSpec("alerts_delete", alerts_delete, AlertsDeleteInput, "alert_deletion"),
     ]

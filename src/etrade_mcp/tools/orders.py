@@ -3,8 +3,10 @@
 from typing import Annotated, Any
 
 from etrade_python import (
+    CancelOrderResponse,
     OrdersResponse,
     PlaceOrderRequest,
+    PlaceOrderResponse,
     PreviewOrderRequest,
     PreviewOrderResponse,
 )
@@ -12,7 +14,7 @@ from mcp.server.mcpserver.context import Context
 from mcp.types import CallToolResult
 from pydantic import Field, field_serializer
 
-from etrade_mcp.inputs import OrderListRequest, PreviewRequest
+from etrade_mcp.inputs import OrderListRequest, PlacementRequest, PreviewRequest
 from etrade_mcp.responses import Response, WireModel
 from etrade_mcp.server import Runtime, invoke
 
@@ -126,4 +128,50 @@ async def orders_preview_change(
     state = ctx.request_context.lifespan_context
     return await preview_operation(
         "orders_preview_change", state, account_id_key, request, order_id
+    )
+
+
+class OrdersPlaceInput(WireModel):
+    account_id_key: str = Field(min_length=1)
+    request: PlacementRequest
+
+
+class OrdersPlaceChangeInput(OrdersPlaceInput):
+    order_id: int = Field(gt=0, strict=True)
+
+
+class OrdersCancelInput(WireModel):
+    account_id_key: str = Field(min_length=1)
+    order_id: int = Field(gt=0, strict=True)
+
+
+async def orders_place(
+    ctx: Context[Runtime, Any], account_id_key: str, request: PlacementRequest
+) -> Annotated[CallToolResult, Response[PlaceOrderResponse]]:
+    """Submit the complete placement request once, without previewing or retrying."""
+    state = ctx.request_context.lifespan_context
+    return await invoke(
+        "orders_place", state, lambda: state.client.orders.place(account_id_key, request)
+    )
+
+
+async def orders_place_change(
+    ctx: Context[Runtime, Any], account_id_key: str, order_id: int, request: PlacementRequest
+) -> Annotated[CallToolResult, Response[PlaceOrderResponse]]:
+    """Submit a complete replacement for the explicit order once, without retrying."""
+    state = ctx.request_context.lifespan_context
+    return await invoke(
+        "orders_place_change",
+        state,
+        lambda: state.client.orders.place_change(account_id_key, order_id, request),
+    )
+
+
+async def orders_cancel(
+    ctx: Context[Runtime, Any], account_id_key: str, order_id: int
+) -> Annotated[CallToolResult, Response[CancelOrderResponse]]:
+    """Request cancellation of the exact account/order once; never implicitly place an order."""
+    state = ctx.request_context.lifespan_context
+    return await invoke(
+        "orders_cancel", state, lambda: state.client.orders.cancel(account_id_key, order_id)
     )

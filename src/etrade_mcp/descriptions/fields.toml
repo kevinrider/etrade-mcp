@@ -1,6 +1,6 @@
 # Discovery-only prose. Field names match Python input schema properties.
 # Changing this file must not change validation, defaults, aliases, or serialization.
-tools = ["orders_preview_equity", "orders_preview_change_equity", "orders_preview_single_option", "orders_preview_change_single_option", "orders_preview_buy_write", "orders_preview_change_buy_write", "orders_preview_vertical", "orders_preview_change_vertical", "orders_preview_butterfly", "orders_preview_change_butterfly", "orders_preview_condor", "orders_preview_change_condor", "orders_preview_iron_butterfly", "orders_preview_change_iron_butterfly", "orders_preview_iron_condor", "orders_preview_change_iron_condor", "orders_preview_call_spread_short_put", "orders_preview_change_call_spread_short_put", "server_status", "accounts_list", "accounts_get_balance", "portfolio_get_positions", "transactions_list", "transactions_get", "market_get_quote", "market_get_quotes", "market_lookup_product", "market_get_option_expirations", "market_get_option_chain", "orders_list", "alerts_list", "alerts_get", "orders_preview", "orders_preview_change"]
+tools = ["orders_preview_equity", "orders_preview_change_equity", "orders_preview_single_option", "orders_preview_change_single_option", "orders_preview_buy_write", "orders_preview_change_buy_write", "orders_preview_vertical", "orders_preview_change_vertical", "orders_preview_butterfly", "orders_preview_change_butterfly", "orders_preview_condor", "orders_preview_change_condor", "orders_preview_iron_butterfly", "orders_preview_change_iron_butterfly", "orders_preview_iron_condor", "orders_preview_change_iron_condor", "orders_preview_call_spread_short_put", "orders_preview_change_call_spread_short_put", "server_status", "accounts_list", "accounts_get_balance", "portfolio_get_positions", "transactions_list", "transactions_get", "market_get_quote", "market_get_quotes", "market_lookup_product", "market_get_option_expirations", "market_get_option_chain", "orders_list", "alerts_list", "alerts_get", "orders_preview", "orders_preview_change", "orders_place", "orders_place_change", "orders_cancel", "alerts_delete"]
 
 [models.EmptyInput]
 
@@ -417,3 +417,29 @@ request = "Required complete focused order request. Omit unused prices or use nu
 account_id_key = "Required obfuscated accountIdKey from accounts_list, not the account number."
 request = "Required complete focused order request. Omit unused prices or use null. General preview tools support advanced fields."
 order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
+
+[models.PlacementRequest]
+order_type = "Required broker order classification: EQ, OPTN, SPREADS, BUY_WRITES, BUTTERFLY, IRON_BUTTERFLY, CONDOR, IRON_CONDOR, MF, or MMF. Match the actual instruments; acceptance is broker-dependent."
+client_order_id = "Caller-assigned ID: 1–20 ASCII letters/digits, unique within the account as required by the broker. Retain it with this request; it is not proof of approval or a server deduplication key."
+orders = "Nonempty array of complete order details, each containing its instruments. Supports multiple entries. This is not a partial patch and does not provide atomic multi-order orchestration."
+
+preview_ids = "Required nonempty preview IDs from the corresponding broker preview. Preserve every ID and the exact approved order; never generate or replace IDs automatically."
+
+[models.PlacementPreviewId]
+preview_id = "Required positive integer broker preview ID. Broker alias previewId is accepted; preserve the returned ID unchanged."
+
+[models.OrdersPlaceInput]
+account_id_key = "Required obfuscated accountIdKey for the exact account approved by the host."
+request = "Required complete placement request as a nested object, not a JSON string. Pass the request from data.placement_arguments unchanged, including all preview IDs."
+
+[models.OrdersPlaceChangeInput]
+account_id_key = "Required obfuscated accountIdKey for the exact account approved by the host."
+request = "Required complete replacement placement request from the corresponding change preview. Pass a nested object, not a JSON string; retain all preview IDs and client order ID."
+order_id = "Required positive integer target order ID from the approved change preview; the server does not fetch existing order details."
+
+[models.OrdersCancelInput]
+account_id_key = "Required obfuscated accountIdKey for the account owning the exact cancellation target."
+order_id = "Required positive integer broker order ID from orders_list, not a client order ID or preview ID."
+
+[models.AlertsDeleteInput]
+alert_ids = "Required nonempty array of positive integer alert IDs. A single alert uses a one-element array. Preserve failed IDs for explicit reconciliation; never automatically retry a batch."
