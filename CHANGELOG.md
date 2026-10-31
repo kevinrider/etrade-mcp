@@ -27,3 +27,5 @@ upgrading a consuming harness.
   mapping, pagination, transport loss, process restart, and secret-handling checks.
 - Four-worker test commands, Python-version CI, isolated wheel/sdist verification,
   and a release workflow prepared for PyPI Trusted Publishing.
+- Public Markdown documentation with MkDocs navigation/search, a concise README,
+  and a GitHub Pages workflow separate from package publishing.

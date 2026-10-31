@@ -1,0 +1,121 @@
+/* Neutral surfaces and blue accents; the existing toggle controls both modes. */
+:root,
+[data-bs-theme="light"] {
+  --bs-primary: #1d4ed8;
+  --bs-primary-rgb: 29, 78, 216;
+  --bs-primary-text-emphasis: #1e3a8a;
+  --bs-primary-bg-subtle: #dbeafe;
+  --bs-primary-border-subtle: #93c5fd;
+  --bs-body-bg: #f8fafc;
+  --bs-body-bg-rgb: 248, 250, 252;
+  --bs-body-color: #1e293b;
+  --bs-body-color-rgb: 30, 41, 59;
+  --bs-heading-color: #0f172a;
+  --bs-emphasis-color: #0f172a;
+  --bs-emphasis-color-rgb: 15, 23, 42;
+  --bs-secondary-color: #475569;
+  --bs-secondary-color-rgb: 71, 85, 105;
+  --bs-secondary-bg: #f1f5f9;
+  --bs-secondary-bg-rgb: 241, 245, 249;
+  --bs-tertiary-bg: #ffffff;
+  --bs-tertiary-bg-rgb: 255, 255, 255;
+  --bs-border-color: #cbd5e1;
+  --bs-link-color: #1d4ed8;
+  --bs-link-color-rgb: 29, 78, 216;
+  --bs-link-hover-color: #1e40af;
+  --bs-link-hover-color-rgb: 30, 64, 175;
+}
+
+[data-bs-theme="dark"] {
+  --bs-primary: #93c5fd;
+  --bs-primary-rgb: 147, 197, 253;
+  --bs-primary-text-emphasis: #bfdbfe;
+  --bs-primary-bg-subtle: #172554;
+  --bs-primary-border-subtle: #3b82f6;
+  --bs-body-bg: #0f172a;
+  --bs-body-bg-rgb: 15, 23, 42;
+  --bs-body-color: #e2e8f0;
+  --bs-body-color-rgb: 226, 232, 240;
+  --bs-heading-color: #f8fafc;
+  --bs-emphasis-color: #f8fafc;
+  --bs-emphasis-color-rgb: 248, 250, 252;
+  --bs-secondary-color: #cbd5e1;
+  --bs-secondary-color-rgb: 203, 213, 225;
+  --bs-secondary-bg: #1e293b;
+  --bs-secondary-bg-rgb: 30, 41, 59;
+  --bs-tertiary-bg: #1e293b;
+  --bs-tertiary-bg-rgb: 30, 41, 59;
+  --bs-border-color: #334155;
+  --bs-link-color: #93c5fd;
+  --bs-link-color-rgb: 147, 197, 253;
+  --bs-link-hover-color: #bfdbfe;
+  --bs-link-hover-color-rgb: 191, 219, 254;
+}
+
+/* Replace the theme's grid and cyan gradient with the selected solid colors. */
+body::before {
+  background: var(--bs-body-bg);
+}
+
+.navbar.bg-primary {
+  background-color: #0f172a !important;
+  background-image: none;
+  border-bottom: 1px solid #334155;
+  --bs-navbar-color: #e2e8f0;
+  --bs-navbar-hover-color: #ffffff;
+  --bs-navbar-active-color: #ffffff;
+  --bs-navbar-brand-color: #ffffff;
+  --bs-navbar-brand-hover-color: #ffffff;
+  --bs-navbar-disabled-color: #94a3b8;
+  --bs-navbar-toggler-border-color: #94a3b8;
+}
+
+.dropdown-menu {
+  --bs-dropdown-link-active-bg: #1d4ed8;
+  --bs-dropdown-link-active-color: #ffffff;
+}
+
+.bs-sidebar .nav {
+  --bs-nav-link-color: var(--bs-link-color);
+  --bs-nav-link-hover-color: var(--bs-link-hover-color);
+}
+
+.btn-primary {
+  background-image: none;
+  --bs-btn-color: #ffffff;
+  --bs-btn-bg: #1d4ed8;
+  --bs-btn-border-color: #1d4ed8;
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-bg: #1e40af;
+  --bs-btn-hover-border-color: #1e40af;
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: #1e40af;
+  --bs-btn-active-border-color: #1e40af;
+}
+
+:not(pre) > code {
+  background-color: var(--bs-secondary-bg);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 3px;
+}
+
+/* Keep wide reference tables and code blocks scrollable inside the page. */
+[role="main"] {
+  min-width: 0;
+}
+
+[role="main"] table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+[role="main"] pre {
+  max-width: 100%;
+  overflow-x: auto;
+}

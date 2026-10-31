@@ -1,8 +1,55 @@
-# Connecting MCP clients
+# Connect your MCP client
+
+Streamable HTTP is the default, at `http://127.0.0.1:8000/mcp`. Generate a bearer
+credential once and provide the same value to the server and authorized clients
+through protected environment/configuration. For example, in a private shell:
+
+```sh
+export ETRADE_MCP_HTTP_BEARER_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+etrade-mcp serve --transport streamable-http --environment sandbox --profile default
+```
+
+Every HTTP request requires `Authorization: Bearer <configured token>`. This is
+static access control, separate from broker OAuth; the server does not provide an
+OAuth authorization server or interactive MCP login. Only loopback IP literals
+are accepted for binding. SDK Host/Origin checks restrict requests to the bound
+address and localhost at the configured port. Non-browser clients may omit Origin;
+wildcard CORS and reverse-proxy deployment are not supported. Disable client debug
+logging that would record authorization headers.
+
+A host that launches its server can use stdio instead:
+
+```sh
+# Remove inherited HTTP-only configuration before selecting stdio.
+unset ETRADE_MCP_HTTP_BEARER_TOKEN ETRADE_MCP_HOST ETRADE_MCP_PORT
+etrade-mcp serve --transport stdio --environment sandbox --profile default
+```
+
+Configure an MCP client's stdio command as `etrade-mcp` with arguments
+`serve --transport stdio --environment sandbox --profile default`, forwarding
+broker credentials through its protected subprocess environment. For a local
+agent harness or another HTTP-capable MCP client, configure the URL above and a
+bearer credential sourced from protected configuration. No secrets belong in
+model prompts or command-line arguments. The server uses the same tools and
+permissions for either transport. Stdio reserves stdout for protocol traffic;
+diagnostics go to stderr. HTTP disables request access logging.
+
+The official `mcp>=2.3,<3` SDK supplies async tools, structured schemas, both
+transports, and compatibility with earlier protocol revisions without an extra
+framework. The lockfile resolves SDK 2.3.0 and client 1.1.0. Tests exercise modern
+SDK mode (protocol `2026-07-28`) and legacy mode (`2025-11-25`);
+installed-artifact checks exercise both transports.
+This is protocol validation, not a claim of manual validation in every MCP host.
+
+Client examples below use environment-sourced credentials and matching
+HTTP/stdio scopes. See [local service management](service.md) for optional Linux
+user-service setup. No broker secrets belong in client HTTP headers or prompts.
+
+## Client examples
 
 These examples configure the existing tools; they do not provide a trading
 strategy or a human-approval controller. Install the package and complete broker
-OAuth as described in the [README](README.md#install-and-authenticate) first.
+OAuth as described in the [installation guide](getting-started.md) first.
 Use the same sandbox/production environment and profile for login and serving.
 
 Choose HTTP or stdio for a given server entry. Start a fresh client session after
@@ -184,57 +231,4 @@ bearer value. Verify each client adapter's behavior before supplying secrets.
 These configurations are checked against official client documentation and the
 server's protocol tests; they are not a claim that every client/version/model has
 been manually validated. See the README for synthetic order examples and the
-[execution boundary](README.md#configuration-and-execution-boundary).
-
-## Optional Linux user service for local HTTP
-
-A foreground server is sufficient. If using systemd, run a user service under the
-same OS user and keyring backend used for `etrade auth login`. Create a private
-configuration directory and environment file; do not commit its contents:
-
-```sh
-install -d -m 700 "$HOME/.config/etrade-mcp"
-touch "$HOME/.config/etrade-mcp/environment"
-chmod 600 "$HOME/.config/etrade-mcp/environment"
-```
-
-Populate the file privately with environment assignments (not shell commands), including broker credentials, the selected environment, and the HTTP
-bearer token. It is loaded by systemd, not by the adapter. A structural template:
-
-```text
-ETRADE_CONSUMER_KEY=replace-with-issued-key
-ETRADE_CONSUMER_SECRET=replace-with-issued-secret
-ETRADE_ENVIRONMENT=sandbox
-ETRADE_MCP_HTTP_BEARER_TOKEN=replace-with-one-generated-token
-```
-
-Place a unit at `~/.config/systemd/user/etrade-mcp.service`, adjusting `ExecStart`
-to the installed executable path (`uv tool dir --bin` locates the tool directory):
-
-```ini
-[Unit]
-Description=Local E*TRADE MCP server
-
-[Service]
-Type=simple
-EnvironmentFile=%h/.config/etrade-mcp/environment
-ExecStart=%h/.local/bin/etrade-mcp serve --transport streamable-http --environment sandbox --profile default --no-enable-order-execution --no-enable-alert-deletion
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
-```
-
-Then use `systemctl --user daemon-reload` and
-`systemctl --user enable --now etrade-mcp`. Check status with
-`systemctl --user status etrade-mcp` and logs with
-`journalctl --user -u etrade-mcp`; stop it with
-`systemctl --user disable --now etrade-mcp`.
-
-An interactive desktop keyring may be unavailable or locked in a user service or
-at boot. Verify backend/session access; do not substitute a plaintext credential
-store to work around that. Perform OAuth login interactively outside the unit,
-with matching credentials/environment/profile. Expired credentials require a new
-login. Restarting the service cannot recover a lost execution outcome or replay
-an order; the host still owns reconciliation. No service is installed or enabled
-by package installation.
+[execution boundary](configuration.md).

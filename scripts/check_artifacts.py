@@ -19,7 +19,19 @@ def check_contents(names: list[str], required: set[str]) -> None:
     missing = required.difference(names)
     if missing:
         raise RuntimeError(f"Missing archive entries: {sorted(missing)}")
-    forbidden = {".git", ".venv", ".idea", ".vscode", "__pycache__", "dist", "build"}
+    forbidden = {
+        ".git",
+        ".venv",
+        ".idea",
+        ".vscode",
+        "__pycache__",
+        "dist",
+        "build",
+        "site",
+        "implementation-plan.md",
+        "order-tools-design.md",
+        "order-tools-contract.json",
+    }
     for name in names:
         path = PurePosixPath(name)
         if (
@@ -44,8 +56,11 @@ def main() -> None:
         *(f"etrade_mcp/descriptions/{name}.md" for name in catalog().tools),
     }
     with zipfile.ZipFile(wheels[0]) as archive:
+        wheel_names = archive.namelist()
+        if any("docs" in PurePosixPath(name).parts for name in wheel_names):
+            raise RuntimeError("Public documentation belongs in the source distribution only")
         check_contents(
-            archive.namelist(),
+            wheel_names,
             {
                 "etrade_mcp/__init__.py",
                 "etrade_mcp/_version.py",
@@ -74,7 +89,7 @@ def main() -> None:
                 "scripts/protocol_smoke.py",
                 "scripts/check_release.py",
                 "tests/test_release.py",
-                "CLIENTS.md",
+                "mkdocs.yml",
                 "CHANGELOG.md",
                 "SECURITY.md",
                 "README.md",
@@ -96,7 +111,10 @@ def main() -> None:
                 "pyproject.toml",
                 "uv.lock",
             }
-            | {"src/" + name for name in guidance_assets},
+            | {"src/" + name for name in guidance_assets}
+            | {
+                str(path.relative_to(ROOT)) for path in (ROOT / "docs").rglob("*") if path.is_file()
+            },
         )
 
     # -I excludes the checkout and inherited Python path settings from imports.
@@ -111,6 +129,9 @@ from etrade_mcp.guidance import catalog, tool_description
 assert etrade_mcp.__version__ == version('etrade-mcp')
 assert metadata('etrade-mcp')['License-Expression'] == 'Apache-2.0'
 assert "Repository, https://github.com/kevinrider/etrade-mcp" in (
+    metadata('etrade-mcp').get_all('Project-URL', [])
+)
+assert "Documentation, https://kevinrider.github.io/etrade-mcp/" in (
     metadata('etrade-mcp').get_all('Project-URL', [])
 )
 assert files('etrade_mcp').joinpath('py.typed').is_file()

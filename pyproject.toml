@@ -33,7 +33,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/kevinrider/etrade-mcp"
-Documentation = "https://github.com/kevinrider/etrade-mcp/blob/main/README.md"
+Documentation = "https://kevinrider.github.io/etrade-mcp/"
 Repository = "https://github.com/kevinrider/etrade-mcp"
 Issues = "https://github.com/kevinrider/etrade-mcp/issues"
 Changelog = "https://github.com/kevinrider/etrade-mcp/blob/main/CHANGELOG.md"
@@ -55,6 +55,8 @@ dev = [
   "httpx2>=2.10,<3",
 ]
 
+docs = ["mkdocs>=1.6,<2"]
+
 [tool.hatch.version]
 path = "src/etrade_mcp/_version.py"
 
@@ -67,7 +69,7 @@ core-metadata-version = "2.4"
 include = [
   "/src", "/scripts", "/tests", "/README.md", "/LICENSE",
   "/CONTRIBUTING.md", "/Makefile", "/pyproject.toml",
-  "/uv.lock", "/CHANGELOG.md", "/SECURITY.md", "/CLIENTS.md",
+  "/uv.lock", "/CHANGELOG.md", "/SECURITY.md", "/docs", "/mkdocs.yml",
 ]
 
 [tool.ruff]

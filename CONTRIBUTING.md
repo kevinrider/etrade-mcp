@@ -17,7 +17,8 @@ uv run --frozen etrade-mcp --version
 ```
 
 No E*TRADE credentials or authenticated broker access are needed to run the test
-suite. See the [README](README.md) for server configuration and manual usage.
+suite. See the [user guide](https://kevinrider.github.io/etrade-mcp/) for server
+configuration and manual usage.
 
 uv selects an available compatible Python interpreter. To select one explicitly,
 set `UV_PYTHON`, for example `export UV_PYTHON=3.11`, before running setup and
@@ -58,7 +59,7 @@ log response bodies, arbitrary exceptions, unknown fields, or enable protocol/
 HTTP wire logging. Test that diagnostic formatting and sink failures cannot
 change tool results, and that both transports retain the same behavior.
 
-Maintain the [README tool coverage table](README.md#tool-coverage) manually when
+Maintain the [tool coverage table](docs/reference/tool-coverage.md) manually when
 client operations or MCP tools change. Link implemented tools to relevant tests,
 distinguish planned tools, explain intentional omissions, and document coverage
 of request fields when adding brokerage wrappers.
@@ -141,6 +142,40 @@ broker HTTP responses. Existing fixtures isolate credential storage and block
 external broker networking. Protocol tests exercise actual stdio and loopback
 HTTP connections. Keep offline tests independent of broker authorization, and
 never place live orders as part of development or automated testing.
+
+## Maintain the public documentation
+
+Public Markdown lives in `docs/`; `mkdocs.yml` defines navigation and strict
+link checks. Keep the README short and link to the relevant guide page for detail.
+The tool coverage table is maintained manually; do not generate it from tests.
+CONTRIBUTING, SECURITY, and CHANGELOG remain canonical root documents linked from
+the site. Packaged MCP tool descriptions remain in the Python package and are
+separate from the website.
+
+Install the optional documentation tools and build or preview locally:
+
+```sh
+uv sync --extra dev --extra docs --frozen
+uv run --extra docs --frozen mkdocs build --strict
+uv run --extra docs --frozen mkdocs serve
+```
+
+Equivalent Make targets are `make docs-build` and `make docs-serve`. The preview
+uses port 8001 (separate from the MCP server's port 8000) and the project path
+`http://127.0.0.1:8001/etrade-mcp/`. Generated `site/` output is ignored and must
+not be committed. Inspect navigation, search, examples, and internal links before
+submitting documentation changes; there are no README text/coverage snapshot tests.
+
+The Documentation workflow builds pull requests and main-branch documentation
+changes. Only main-branch pushes or a manual run on main deploy a successful build
+to the `github-pages` environment. Pull requests have no deployment permissions.
+The release build also validates the site once, outside its Python test matrix.
+
+For the first deployment, the repository owner must select **Settings → Pages →
+Build and deployment → Source: GitHub Actions**, then push the workflow/docs commit
+or manually run Documentation on main. Review the resulting Pages URL before
+publishing a package. Pages deployment is independent of the `pypi` environment
+and does not publish a package or start an MCP server.
 
 ## Verify distributions
 

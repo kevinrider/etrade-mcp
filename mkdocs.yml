@@ -1,0 +1,62 @@
+site_name: etrade-mcp
+site_description: E*TRADE tools for your MCP-compatible agent or application.
+site_url: https://kevinrider.github.io/etrade-mcp/
+repo_url: https://github.com/kevinrider/etrade-mcp
+repo_name: kevinrider/etrade-mcp
+edit_uri: edit/main/docs/
+docs_dir: docs
+site_dir: site
+dev_addr: 127.0.0.1:8001
+use_directory_urls: true
+
+theme:
+  name: mkdocs
+  color_mode: auto
+  user_color_mode_toggle: true
+  nav_style: primary
+  locale: en
+
+plugins:
+  - search
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true
+
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn
+
+nav:
+  - Home: index.md
+  - Get started:
+      - Install and authenticate: getting-started.md
+      - Connect your client: connections.md
+      - Configuration: configuration.md
+  - Guides:
+      - Choose a workflow: workflows.md
+      - Order previews: previews.md
+      - Execution and approval: execution.md
+  - Reference:
+      - Tool coverage: reference/tool-coverage.md
+      - Responses and errors: reference/responses.md
+      - Reads and pagination: reference/reads.md
+  - Operations:
+      - Diagnostics: diagnostics.md
+      - Linux service: service.md
+  - Project:
+      - Contributing: https://github.com/kevinrider/etrade-mcp/blob/main/CONTRIBUTING.md
+      - Security: https://github.com/kevinrider/etrade-mcp/blob/main/SECURITY.md
+      - Changelog: https://github.com/kevinrider/etrade-mcp/blob/main/CHANGELOG.md

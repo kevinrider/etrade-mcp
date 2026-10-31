@@ -1,4 +1,4 @@
-.PHONY: install lint format format-check type test check build twine-check artifact-check package-check
+.PHONY: install lint format format-check type test check build twine-check artifact-check package-check docs-build docs-serve
 
 install:
 	uv sync --extra dev --frozen
@@ -32,3 +32,9 @@ artifact-check:
 package-check: build
 	uv run --frozen python -m twine check --strict dist/*
 	uv run --frozen python scripts/check_artifacts.py
+
+docs-build:
+	uv run --extra docs --frozen mkdocs build --strict
+
+docs-serve:
+	uv run --extra docs --frozen mkdocs serve
