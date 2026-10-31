@@ -29,7 +29,7 @@ jobs:
       - run: uv run --frozen ruff check .
       - run: uv run --frozen ruff format --check .
       - run: uv run --frozen pyright --pythonpath .venv/bin/python
-      - run: uv run --frozen pytest
+      - run: uv run --frozen pytest -n 4
       - run: uv build --clear
       - run: uv run --frozen python -m twine check --strict dist/*
       - run: uv run --frozen python scripts/check_artifacts.py

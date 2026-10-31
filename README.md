@@ -638,16 +638,18 @@ uv sync --extra dev --frozen
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pyright --pythonpath .venv/bin/python
-uv run --frozen pytest
+uv run --frozen pytest -n 4
 uv build --clear
 uv run --frozen python -m twine check --strict dist/*
 uv run --frozen python scripts/check_artifacts.py
 ```
 
-Tests use real MCP discovery/invocation over stdio and loopback HTTP. Broker
-integration tests exercise the real client with fake credentials and HTTPX
-`MockTransport`; external broker networking is blocked. Artifact checks install
-wheel and sdist independently outside the checkout and exercise both transports.
+The full-suite command uses four workers with combined coverage; use `-n 0` for
+serial troubleshooting. Tests use real MCP discovery/invocation over stdio and
+loopback HTTP. Broker integration tests exercise the real client with fake
+credentials and HTTPX `MockTransport`; external broker networking is blocked.
+Artifact checks install wheel and sdist independently outside the checkout and
+exercise both transports.
 These are offline protocol and mocked brokerage tests, not authenticated broker
 validation. No release or live order is submitted by these checks.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution and verification guidance.

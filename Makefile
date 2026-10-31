@@ -16,7 +16,7 @@ type:
 	uv run --frozen pyright --pythonpath .venv/bin/python
 
 test:
-	uv run --frozen pytest
+	uv run --frozen pytest -n 4
 
 check: lint format-check type test
 

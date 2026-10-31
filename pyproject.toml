@@ -43,6 +43,7 @@ dev = [
   "pytest>=8.3,<10",
   "pytest-asyncio>=1,<2",
   "pytest-cov>=6,<8",
+  "pytest-xdist>=3.8,<4",
   "httpx>=0.28,<1",
   "httpx2>=2.10,<3",
 ]

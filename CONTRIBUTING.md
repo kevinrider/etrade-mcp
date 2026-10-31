@@ -106,12 +106,34 @@ uv lock --check
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pyright --pythonpath .venv/bin/python
-uv run --frozen pytest
+uv run --frozen pytest -n 4
 ```
 
 To apply formatting, use `uv run --frozen ruff format .`. If Make is available,
 `make install`, `make check`, and `make format` wrap the setup, code checks, and
 formatting commands. Run `uv lock --check` separately.
+
+The full-suite command, `make test`, and CI use four pytest-xdist worker processes.
+Coverage is combined across workers and retains the same 90% requirement. Direct
+`uv run --frozen pytest` remains serial by default. To troubleshoot serially or
+compare timings, run:
+
+```sh
+uv run --frozen pytest -n 0 --durations=25
+```
+
+For a machine with limited CPU or memory, use `-n 2` and compare elapsed time.
+Avoid unbounded worker counts: protocol tests also start server processes.
+Tests must keep temporary files, credential environments, and loopback ports
+isolated across workers; do not share running servers between tests.
+
+During development, run the affected tests without full-suite coverage collection:
+
+```sh
+uv run --frozen pytest tests/test_mutations.py --no-cov
+```
+
+Run the complete suite with coverage before submitting a pull request.
 
 The suite enforces at least 90% combined statement/branch coverage. Brokerage
 integration tests must exercise the real client with fake credentials and mocked
