@@ -1,5 +1,7 @@
 Returns data.broker_preview with the complete broker response and data.placement_arguments with the exact normalized replacement, account/order targeting, and every preview ID. Placement arguments are not approval, authorization, freshness, or duplicate protection.
 
+Generate a new account-unique client_order_id for this modification; do not reuse the original placed order's ID or an ID used for another order/modification. Use 1–20 ASCII letters/digits and preserve this ID unchanged from this preview through its corresponding placement. After an uncertain submission, reconcile before resubmitting; never generate a fresh ID to bypass a duplicate error.
+
 Preview a complete replacement for a working order without modifying or placing it. Obtain account_id_key and the positive integer order_id from orders_list; use the order ID, not a preview ID. Inspect current broker status first.
 
 Provide the complete intended replacement under request, including unchanged settings to retain; this is not a price-only patch. Use the same full request schema as orders_preview, including explicit option opening/closing actions and decimal-string prices/quantities. Omit unused disclosure/mf_quantity objects or use null; explicit empty/all-null objects are preserved.
@@ -8,7 +10,7 @@ Returns a fresh full broker preview directly in data, including PreviewIds and w
 
 The host retains the exact account/order/request and preview for human review, freshness, approval binding, and later submission. Material changes need another preview and approval. No mutation, stored preparation record, or automatic retry occurs. Use orders_preview for a new order.
 
-Synthetic argument example:
+Synthetic argument example (illustrative client_order_id; generate a fresh value for an actual workflow):
 
 ```json
 {

@@ -472,6 +472,21 @@ Material changes require another preview and renewed approval. The broker checks
 preview validity; the adapter cannot certify association or freshness. The preview
 may originate in another process, with no server preparation record to retrieve.
 
+Generate a new account-unique `client_order_id` for each new order or modification,
+using 1–20 ASCII letters/digits. A change preview needs a new ID; do not reuse the
+original placed order's ID. Keep that ID unchanged through the corresponding
+preview and placement:
+
+| Workflow | Preview client ID | Placement client ID |
+| --- | --- | --- |
+| New order | `ExampleNew001` | `ExampleNew001` |
+| First modification | `ExampleChange001` | `ExampleChange001` |
+| Subsequent modification | `ExampleChange002` | `ExampleChange002` |
+
+These IDs are illustrative; generate fresh values for actual workflows. The
+caller owns account-wide uniqueness. After an uncertain submission, reconcile
+before deciding whether to resubmit; a new ID must not bypass duplicate controls.
+
 `orders_cancel` accepts an explicit `account_id_key` and positive integer
 `order_id`; it does not require a preview. Obtain approval for that exact target.
 Placement or cancellation acknowledgments do not establish fills or absence of

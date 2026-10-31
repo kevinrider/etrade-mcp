@@ -75,7 +75,7 @@ html_tags = "Whether the broker should include HTML tags in alert text. Omit/nul
 
 [models.PreviewRequest]
 order_type = "Required broker order classification: EQ, OPTN, SPREADS, BUY_WRITES, BUTTERFLY, IRON_BUTTERFLY, CONDOR, IRON_CONDOR, MF, or MMF. Match the actual instruments; acceptance is broker-dependent."
-client_order_id = "Caller-assigned ID: 1–20 ASCII letters/digits, unique within the account as required by the broker. Retain it with this request; it is not proof of approval or a server deduplication key."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 orders = "Nonempty array of complete order details, each containing its instruments. Supports multiple entries. This is not a partial patch and does not provide atomic multi-order orchestration."
 
 [models.PreviewDetail]
@@ -193,7 +193,7 @@ request = "Required complete replacement PreviewOrderRequest, not a patch. Prese
 order_id = "Required positive integer broker order ID from orders_list for this account. Identifies the working order to replace; this is not a preview ID."
 
 [models.EquityRequest]
-client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
 order_term = "Requested term; advanced terms use the general tool."
 market_session = "Requested session; broker checks instrument/price eligibility."
@@ -214,7 +214,7 @@ request = "Required complete focused order request. Omit unused prices or use nu
 order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
 
 [models.SingleOptionRequest]
-client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
 order_term = "Requested term; advanced terms use the general tool."
 market_session = "Requested session; broker checks instrument/price eligibility."
@@ -238,7 +238,7 @@ request = "Required complete focused order request. Omit unused prices or use nu
 order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
 
 [models.BuyWriteRequest]
-client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
 order_term = "Requested term; advanced terms use the general tool."
 market_session = "Requested session; broker checks instrument/price eligibility."
@@ -261,7 +261,7 @@ request = "Required complete focused order request. Omit unused prices or use nu
 order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
 
 [models.VerticalRequest]
-client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
 order_term = "Requested term; advanced terms use the general tool."
 market_session = "Requested session; broker checks instrument/price eligibility."
@@ -286,7 +286,7 @@ request = "Required complete focused order request. Omit unused prices or use nu
 order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
 
 [models.ButterflyRequest]
-client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
 order_term = "Requested term; advanced terms use the general tool."
 market_session = "Requested session; broker checks instrument/price eligibility."
@@ -313,7 +313,7 @@ request = "Required complete focused order request. Omit unused prices or use nu
 order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
 
 [models.CondorRequest]
-client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
 order_term = "Requested term; advanced terms use the general tool."
 market_session = "Requested session; broker checks instrument/price eligibility."
@@ -341,7 +341,7 @@ request = "Required complete focused order request. Omit unused prices or use nu
 order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
 
 [models.IronButterflyRequest]
-client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
 order_term = "Requested term; advanced terms use the general tool."
 market_session = "Requested session; broker checks instrument/price eligibility."
@@ -367,7 +367,7 @@ request = "Required complete focused order request. Omit unused prices or use nu
 order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
 
 [models.IronCondorRequest]
-client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
 order_term = "Requested term; advanced terms use the general tool."
 market_session = "Requested session; broker checks instrument/price eligibility."
@@ -394,7 +394,7 @@ request = "Required complete focused order request. Omit unused prices or use nu
 order_id = "Required positive integer broker order ID from orders_list for this account. Provide a complete replacement; no existing order is fetched."
 
 [models.CallSpreadShortPutRequest]
-client_order_id = "Caller-generated account-unique client ID; preserve it through preview and placement."
+client_order_id = "Caller-generated ID: 1–20 ASCII letters/digits, account-unique for each new order or modification. A change preview needs a new ID, not the original placed order's ID. Preserve it unchanged through the corresponding preview and placement. Reconcile uncertain submissions before resubmitting; never generate a fresh ID to bypass a duplicate error."
 symbol = "Explicit security/underlying symbol; trim and uppercase using the public client."
 order_term = "Requested term; advanced terms use the general tool."
 market_session = "Requested session; broker checks instrument/price eligibility."
@@ -420,7 +420,7 @@ order_id = "Required positive integer broker order ID from orders_list for this 
 
 [models.PlacementRequest]
 order_type = "Required broker order classification: EQ, OPTN, SPREADS, BUY_WRITES, BUTTERFLY, IRON_BUTTERFLY, CONDOR, IRON_CONDOR, MF, or MMF. Match the actual instruments; acceptance is broker-dependent."
-client_order_id = "Caller-assigned ID: 1–20 ASCII letters/digits, unique within the account as required by the broker. Retain it with this request; it is not proof of approval or a server deduplication key."
+client_order_id = "Use the client_order_id from the corresponding preview unchanged (1–20 ASCII letters/digits). For a modification, this is the new ID used in the change preview, not the original placed order's ID. It is not proof of approval or a server deduplication key. Reconcile uncertain submissions before resubmitting; never replace the ID to bypass a duplicate error."
 orders = "Nonempty array of complete order details, each containing its instruments. Supports multiple entries. This is not a partial patch and does not provide atomic multi-order orchestration."
 
 preview_ids = "Required nonempty preview IDs from the corresponding broker preview. Preserve every ID and the exact approved order; never generate or replace IDs automatically."

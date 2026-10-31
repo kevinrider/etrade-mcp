@@ -1,12 +1,14 @@
 Preview a complete new order without placing it. Obtain account_id_key from accounts_list and use actual symbols/contracts from market tools. Supports equities, single/multi-leg options, buy-writes, multiple entries, and all public client request capabilities.
 
+Generate a new account-unique client_order_id for each new order; do not reuse an ID used for another order or modification. Use 1–20 ASCII letters/digits and preserve this ID unchanged from this preview through its corresponding placement. After an uncertain submission, reconcile before resubmitting; never generate a fresh ID to bypass a duplicate error.
+
 Provide order_type, a caller-assigned 1–20 alphanumeric client_order_id, and complete orders/instruments. Equity uses BUY/SELL/SELL_SHORT/BUY_TO_COVER; option legs use BUY_OPEN/SELL_OPEN/BUY_CLOSE/SELL_CLOSE and require CALL/PUT, expiration year/month/day, and strike_price. Prices and quantities are decimal strings. LIMIT needs limit_price; STOP needs stop_price; STOP_LIMIT needs stop_price and a limit. NET_DEBIT/NET_CREDIT use a positive net limit_price; do not assign separate leg prices.
 
 Omit unused optional objects (especially disclosure and mf_quantity) or use null. Explicit objects are preserved even when all children are null; do not fill the schema with placeholder objects. Detail/instrument extensions are supported; unknown fields elsewhere are rejected.
 
 Returns data.broker_preview with the complete broker preview, including PreviewIds and warnings. data.placement_arguments contains the exact normalized request plus all preview IDs and account targeting for future placement; it is not approval or authorization. Retain the exact request, preview IDs, and observation time for review. Preview is not approval; the host owns request binding, freshness, human approval, and submission history. No pending order is stored, no order is placed, and no automatic retry occurs. Use orders_preview_change for an existing order.
 
-Synthetic argument example:
+Synthetic argument example (illustrative client_order_id; generate a fresh value for an actual workflow):
 
 ```json
 {

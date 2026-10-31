@@ -1,5 +1,7 @@
 Preview a complete replacement of an existing iron condor order using the broker preview endpoint only. Does not place, change, or cancel an order.
 
+Generate a new account-unique client_order_id for this modification; do not reuse the original placed order's ID or an ID used for another order/modification. Use 1–20 ASCII letters/digits and preserve this ID unchanged from this preview through its corresponding placement. After an uncertain submission, reconcile before resubmitting; never generate a fresh ID to bypass a duplicate error.
+
 Four equal-quantity options in ascending strike order: lower put, upper put, lower call, upper call. Opening sides are wing/body/body/wing; body is opposite wing_action. Wing widths may differ.
 
 position_effect OPEN maps opening BUY/SELL roles to BUY_OPEN/SELL_OPEN. CLOSE reverses them to SELL_CLOSE/BUY_CLOSE. Supply the complete defined structure; partial adjustments and mixed opening/closing legs use the general preview tools.
@@ -10,7 +12,7 @@ Pricing: NET_DEBIT or NET_CREDIT requires a positive limit_price magnitude on th
 
 Returns data.broker_preview with the complete broker response and data.placement_arguments containing the exact normalized order plus every preview ID and order_id. These arguments are not approval or authorization. The host owns exact-request review, human approval, freshness, submission history, and reconciliation. No order is stored and no automatic retry occurs.
 
-Synthetic argument example:
+Synthetic argument example (illustrative client_order_id; generate a fresh value for an actual workflow):
 
 ```json
 {

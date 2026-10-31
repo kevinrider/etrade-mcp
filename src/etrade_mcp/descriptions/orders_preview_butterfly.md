@@ -1,5 +1,7 @@
 Preview a new butterfly order using the broker preview endpoint only. Does not place, change, or cancel an order.
 
+Generate a new account-unique client_order_id for each new order; do not reuse an ID used for another order or modification. Use 1–20 ASCII letters/digits and preserve this ID unchanged from this preview through its corresponding placement. After an uncertain submission, reconcile before resubmitting; never generate a fresh ID to bypass a duplicate error.
+
 Three options of the same right/expiration at strictly increasing equally spaced strikes. Opening wing_action defines outer sides; middle is opposite. Ratios are 1:2:1 times quantity.
 
 position_effect OPEN maps opening BUY/SELL roles to BUY_OPEN/SELL_OPEN. CLOSE reverses them to SELL_CLOSE/BUY_CLOSE. Supply the complete defined structure; partial adjustments and mixed opening/closing legs use the general preview tools.
@@ -10,7 +12,7 @@ Pricing: NET_DEBIT or NET_CREDIT requires a positive limit_price magnitude on th
 
 Returns data.broker_preview with the complete broker response and data.placement_arguments containing the exact normalized order plus every preview ID. These arguments are not approval or authorization. The host owns exact-request review, human approval, freshness, submission history, and reconciliation. No order is stored and no automatic retry occurs.
 
-Synthetic argument example:
+Synthetic argument example (illustrative client_order_id; generate a fresh value for an actual workflow):
 
 ```json
 {
