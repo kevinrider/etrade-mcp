@@ -1,29 +1,19 @@
 # Install and authenticate
 
-Until a release is published, install from a local checkout of this repository.
-With Python 3.11+ and uv installed, run from the repository root:
+Install the published package with Python 3.11+ and uv:
 
 ```sh
-uv tool install --with-executables-from etrade-python .
+uv tool install --with-executables-from etrade-python etrade-mcp
 etrade-mcp --version
 etrade --version
 ```
 
 uv builds the package and exposes both `etrade-mcp` and the client's `etrade`
-authentication CLI from the same isolated tool environment; no prebuilt wheel or
-`dist/` directory is needed. If you already have a compatible `etrade` CLI
-installed (`etrade-python>=1.1,<2`), use `uv tool install .` to keep that executable
-and avoid a conflict. For development, use the setup commands in
+authentication CLI from the same isolated tool environment. If you already have
+a compatible `etrade` CLI installed (`etrade-python>=1.1,<2`), use
+`uv tool install etrade-mcp` to keep that executable and avoid a conflict. For
+development, use the setup commands in
 [CONTRIBUTING.md](https://github.com/kevinrider/etrade-mcp/blob/main/CONTRIBUTING.md) and launch with `uv run etrade-mcp` instead.
-
-After the first PyPI publication, installation by package name will be:
-
-```sh
-uv tool install --with-executables-from etrade-python etrade-mcp
-```
-
-That command is a post-publication instruction, not a claim that the package is
-available now.
 
 Provide `ETRADE_CONSUMER_KEY` and `ETRADE_CONSUMER_SECRET` through your protected
 process environment. They are required even when no access token is stored.

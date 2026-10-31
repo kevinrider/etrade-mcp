@@ -2,8 +2,8 @@
 
 etrade-mcp exposes brokerage information and can submit, modify, cancel orders,
 or delete alerts when execution permissions are enabled. Tool results can contain
-private account data. The initial release target is 0.1.0; no public release has
-been made yet. Before 1.0, interfaces may change between releases.
+private account data. The current release is 0.1.0. Before 1.0, interfaces may
+change between releases.
 
 ## Reporting vulnerabilities
 

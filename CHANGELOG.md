@@ -1,8 +1,7 @@
 # Changelog
 
-The 0.1.0 entry describes the initial release candidate. Publication has not yet
-been performed. Interfaces may change before 1.0; review release notes before
-upgrading a consuming harness.
+Interfaces may change before 1.0; review release notes before upgrading a
+consuming harness.
 
 ## 0.1.0
 
@@ -26,6 +25,6 @@ upgrading a consuming harness.
 - Offline real-client/mock-HTTP and actual MCP protocol tests; precision, multi-leg
   mapping, pagination, transport loss, process restart, and secret-handling checks.
 - Four-worker test commands, Python-version CI, isolated wheel/sdist verification,
-  and a release workflow prepared for PyPI Trusted Publishing.
+  and a release workflow for PyPI Trusted Publishing.
 - Public Markdown documentation with MkDocs navigation/search, a concise README,
   and a GitHub Pages workflow separate from package publishing.

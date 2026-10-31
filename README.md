@@ -1,9 +1,16 @@
 # etrade-mcp
 
+<div align="center">
+<a href="https://github.com/kevinrider/etrade-mcp/releases"><img src="https://img.shields.io/github/release/kevinrider/etrade-mcp.svg?style=flat-square" alt="Latest Version"></a>
+<a href="https://github.com/kevinrider/etrade-mcp/actions/workflows/ci.yml"><img src="https://github.com/kevinrider/etrade-mcp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+<a href="https://github.com/kevinrider/etrade-mcp/issues"><img src="https://img.shields.io/github/issues/kevinrider/etrade-mcp" alt="GitHub issues"></a>
+<a href="https://github.com/kevinrider/etrade-mcp/blob/main/LICENSE"><img src="https://img.shields.io/github/license/kevinrider/etrade-mcp" alt="License"></a>
+</div>
+
 **E*TRADE, one tool call away.**
 
-Give your agent a brokerage toolkit: quotes, positions, option chains, and order
-previews, through a typed Python MCP server backed by
+Give your agent a brokerage toolkit: accounts, quotes, positions, option chains, and order
+management, through a typed Python MCP server backed by
 [etrade-python](https://pypi.org/project/etrade-python/).
 
 [Documentation](https://kevinrider.github.io/etrade-mcp/) ·
@@ -28,11 +35,9 @@ decisions stay in your application.
 ## Get started
 
 Requires **Python 3.11–3.14** and [uv](https://docs.astral.sh/uv/).
-The initial release target is **0.1.0**; interfaces may evolve before 1.0.
-Until the first PyPI release, install from a checkout of this repository:
 
 ```sh
-uv tool install --with-executables-from etrade-python .
+uv tool install --with-executables-from etrade-python etrade-mcp
 etrade-mcp --version
 etrade --version
 ```
@@ -40,7 +45,7 @@ etrade --version
 This exposes both the server and the client's OAuth CLI. Already have a
 compatible `etrade` executable? See the
 [installation guide](https://kevinrider.github.io/etrade-mcp/getting-started/)
-for that setup and the post-publication installation command.
+for that setup.
 
 Provide `ETRADE_CONSUMER_KEY` and `ETRADE_CONSUMER_SECRET` through your protected
 process environment, using keys issued for the selected broker environment.
