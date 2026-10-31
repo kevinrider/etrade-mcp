@@ -170,6 +170,7 @@ documentation updates, and state which checks you ran and their results.
 Distinguish offline protocol tests and mocked brokerage integration tests from
 any separately arranged authenticated broker validation. Note checks you could
 not run and why. Address review feedback and keep the pull request focused;
-release publishing is handled separately by maintainers.
+release publishing is handled separately by maintainers. Report security issues
+through [SECURITY.md](SECURITY.md), not public bug reports containing private details.
 
 Contributions are provided under the project's [Apache-2.0 license](LICENSE).

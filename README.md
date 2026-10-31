@@ -3,12 +3,14 @@
 A typed, async MCP adapter over [etrade-python](https://pypi.org/project/etrade-python/).
 Python 3.11–3.14; loopback Streamable HTTP and stdio.
 
-**Alpha: Milestone 6.** All 13 client-supported brokerage reads, 20 order
+**Initial release target: 0.1.0.** All 13 client-supported brokerage reads, 20 order
 preview tools, and `server_status` are available over both transports: 34 tools
 by default. Three order mutation tools and independent alert deletion bring the
 complete catalog to 38 tools when both execution capabilities are enabled.
 The [tool coverage table](#tool-coverage) tracks implemented tools and their
-tests, planned client operations, request models, and intentional omissions.
+tests, request models, and intentional omissions. Functionality has offline
+protocol/integration validation across Python 3.11–3.14; interfaces may change
+before 1.0. See [CHANGELOG.md](https://github.com/kevinrider/etrade-mcp/blob/main/CHANGELOG.md) and [SECURITY.md](https://github.com/kevinrider/etrade-mcp/blob/main/SECURITY.md).
 
 ## Install and authenticate
 
@@ -26,7 +28,16 @@ authentication CLI from the same isolated tool environment; no prebuilt wheel or
 `dist/` directory is needed. If you already have a compatible `etrade` CLI
 installed (`etrade-python>=1.1,<2`), use `uv tool install .` to keep that executable
 and avoid a conflict. For development, use the setup commands in
-[CONTRIBUTING.md](CONTRIBUTING.md) and launch with `uv run etrade-mcp` instead.
+[CONTRIBUTING.md](https://github.com/kevinrider/etrade-mcp/blob/main/CONTRIBUTING.md) and launch with `uv run etrade-mcp` instead.
+
+After the first PyPI publication, installation by package name will be:
+
+```sh
+uv tool install --with-executables-from etrade-python etrade-mcp
+```
+
+That command is a post-publication instruction, not a claim that the package is
+available now.
 
 Provide `ETRADE_CONSUMER_KEY` and `ETRADE_CONSUMER_SECRET` through your protected
 process environment. They are required even when no access token is stored.
@@ -91,6 +102,11 @@ framework. The lockfile resolves SDK 2.3.0 and client 1.1.0. Tests exercise mode
 SDK mode (protocol `2026-07-28`) and legacy mode (`2025-11-25`);
 installed-artifact checks exercise both transports.
 This is protocol validation, not a claim of manual validation in every MCP host.
+
+For Codex, Claude Code, a generic Python client, and optional Linux user-service
+setup, see [CLIENTS.md](https://github.com/kevinrider/etrade-mcp/blob/main/CLIENTS.md). Configuration examples use environment-sourced
+credentials and matching HTTP/stdio scopes; no broker secrets belong in client
+HTTP headers or model prompts.
 
 ## Configuration and execution boundary
 
@@ -440,6 +456,50 @@ opening/closing adjustments. These remain available in `orders_preview` and
 `orders_preview_change`. Broker acceptance and account eligibility remain broker
 responsibilities. Every tool advertises its precise fields and synthetic example.
 
+## Choose a workflow
+
+Use an exact-name allowlist to limit the tools presented to a model. These are
+configuration recipes, not new presets or strategy implementations. All examples
+keep execution and alert deletion disabled; select sandbox or production and the
+matching profile explicitly. For example:
+
+```sh
+etrade-mcp serve --environment sandbox --profile default \
+  --no-enable-order-execution --no-enable-alert-deletion \
+  --tool-allowlist server_status,accounts_list,market_get_quote,orders_list,orders_preview_equity,orders_preview_change_equity
+```
+
+HTTP also requires its configured bearer token. For stdio, remove HTTP-only
+settings and add `--transport stdio`; see [CLIENTS.md](https://github.com/kevinrider/etrade-mcp/blob/main/CLIENTS.md).
+
+| Workflow | Suggested allowlist |
+| --- | --- |
+| Equity | `server_status,accounts_list,market_get_quote,orders_list,orders_preview_equity,orders_preview_change_equity` |
+| Single option | `server_status,accounts_list,market_get_quote,market_get_option_expirations,market_get_option_chain,orders_list,orders_preview_single_option,orders_preview_change_single_option` |
+| Selected spreads (vertical and iron condor) | `server_status,accounts_list,market_get_quote,market_get_option_expirations,market_get_option_chain,orders_list,orders_preview_vertical,orders_preview_change_vertical,orders_preview_iron_condor,orders_preview_change_iron_condor` |
+| Market research only | `server_status,market_get_quote,market_get_quotes,market_lookup_product,market_get_option_expirations,market_get_option_chain` |
+| Account/portfolio research | `server_status,accounts_list,accounts_get_balance,portfolio_get_positions,transactions_list,transactions_get,orders_list,alerts_list,alerts_get` |
+| Complete read/preview catalog | Omit the allowlist with both execution switches disabled: 34 tools. |
+| Complete catalog including execution | Omit the allowlist and explicitly enable both capabilities: 38 tools. This grants execution access to every authorized caller. |
+
+Add `portfolio_get_positions` when the workflow needs existing holdings. Add the
+general `orders_preview`/`orders_preview_change` tools explicitly when advanced
+fields, unsupported structures, or mixed opening/closing requests need a fallback.
+Only the host/user selects intent; the server does not infer a strategy, holdings,
+listed contracts, or permission to trade. Each order tool's packaged example and
+field guidance is visible through MCP discovery.
+
+A deterministic controller can use a separate process scoped to
+`server_status,orders_list,transactions_list,orders_place,orders_place_change,orders_cancel`,
+with order execution enabled. Keep the model-facing process in preview mode. The
+controller must obtain the returned exact placement arguments and human approval,
+check account/order targeting and freshness, durably record a submission attempt,
+then invoke the corresponding mutation once. Record the acknowledgment and
+reconcile with explicit reads after any uncertain outcome. A material edit needs
+a new preview and approval; a new modification needs a new client order ID. This
+is the host's workflow, not a controller or journal implemented by this package.
+Alert deletion requires its separate switch and exact-target approval.
+
 ## Execution tools
 
 Execution is opt-in at process startup. `--enable-order-execution` permits
@@ -572,26 +632,26 @@ represent available tools. Test links open the file containing the named test.
 
 | Client operation | MCP tool | Status | Request model | Tests / notes |
 | --- | --- | --- | --- | --- |
-| `session.load`, `session.status` | `server_status` | Implemented | — | [test_status_protocol_and_strict_schema](tests/test_server.py)<br>[test_actual_http_discovery_invocation_and_concurrency](tests/test_http.py)<br>[test_actual_stdio_cli_protocol_and_stdout](tests/test_cli.py) |
-| `accounts.list` | `accounts_list` | Implemented | — | [Request mapping and field coverage](tests/test_reads.py) |
-| `accounts.get_balance` | `accounts_get_balance` | Implemented | `AccountBalanceRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `portfolio.get_positions` | `portfolio_get_positions` | Implemented | `PortfolioRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `transactions.list` | `transactions_list` | Implemented | `TransactionsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `transactions.get` | `transactions_get` | Implemented | `TransactionDetailsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `market.get_quote` | `market_get_quote` | Implemented | `QuotesRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `market.get_quotes` | `market_get_quotes` | Implemented | `QuotesRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `market.lookup_product` | `market_lookup_product` | Implemented | `ProductLookupRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `market.get_option_expirations` | `market_get_option_expirations` | Implemented | `OptionExpirationsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `market.get_option_chain` | `market_get_option_chain` | Implemented | `OptionChainRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `orders.list` | `orders_list` | Implemented | `OrdersRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `orders.preview` | `orders_preview` | Implemented | `PreviewOrderRequest` | [Preview mapping, nested fields, permissions, and no-retry tests](tests/test_previews.py) |
-| `orders.place` | `orders_place` | Implemented | `PlaceOrderRequest` | [Mapping, permissions, ambiguity, and no-retry tests](tests/test_mutations.py) |
-| `orders.preview_change` | `orders_preview_change` | Implemented | `PreviewOrderRequest` | [Explicit target, replacement bodies, and protocol tests](tests/test_previews.py) |
-| `orders.place_change` | `orders_place_change` | Implemented | `PlaceOrderRequest` | [Mapping, permissions, ambiguity, and no-retry tests](tests/test_mutations.py) |
-| `orders.cancel` | `orders_cancel` | Implemented | `CancelOrderRequest` | [Mapping, permissions, ambiguity, and no-retry tests](tests/test_mutations.py) |
-| `alerts.list` | `alerts_list` | Implemented | `AlertsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `alerts.get` | `alerts_get` | Implemented | `AlertDetailsRequest` | [Request mapping and field coverage](tests/test_reads.py) |
-| `alerts.delete` | `alerts_delete` | Implemented | — | [Mapping, permissions, ambiguity, and no-retry tests](tests/test_mutations.py) |
+| `session.load`, `session.status` | `server_status` | Implemented | — | [test_status_protocol_and_strict_schema](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_server.py)<br>[test_actual_http_discovery_invocation_and_concurrency](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_http.py)<br>[test_actual_stdio_cli_protocol_and_stdout](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_cli.py) |
+| `accounts.list` | `accounts_list` | Implemented | — | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `accounts.get_balance` | `accounts_get_balance` | Implemented | `AccountBalanceRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `portfolio.get_positions` | `portfolio_get_positions` | Implemented | `PortfolioRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `transactions.list` | `transactions_list` | Implemented | `TransactionsRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `transactions.get` | `transactions_get` | Implemented | `TransactionDetailsRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `market.get_quote` | `market_get_quote` | Implemented | `QuotesRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `market.get_quotes` | `market_get_quotes` | Implemented | `QuotesRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `market.lookup_product` | `market_lookup_product` | Implemented | `ProductLookupRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `market.get_option_expirations` | `market_get_option_expirations` | Implemented | `OptionExpirationsRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `market.get_option_chain` | `market_get_option_chain` | Implemented | `OptionChainRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `orders.list` | `orders_list` | Implemented | `OrdersRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `orders.preview` | `orders_preview` | Implemented | `PreviewOrderRequest` | [Preview mapping, nested fields, permissions, and no-retry tests](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_previews.py) |
+| `orders.place` | `orders_place` | Implemented | `PlaceOrderRequest` | [Mapping, permissions, ambiguity, and no-retry tests](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_mutations.py) |
+| `orders.preview_change` | `orders_preview_change` | Implemented | `PreviewOrderRequest` | [Explicit target, replacement bodies, and protocol tests](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_previews.py) |
+| `orders.place_change` | `orders_place_change` | Implemented | `PlaceOrderRequest` | [Mapping, permissions, ambiguity, and no-retry tests](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_mutations.py) |
+| `orders.cancel` | `orders_cancel` | Implemented | `CancelOrderRequest` | [Mapping, permissions, ambiguity, and no-retry tests](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_mutations.py) |
+| `alerts.list` | `alerts_list` | Implemented | `AlertsRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `alerts.get` | `alerts_get` | Implemented | `AlertDetailsRequest` | [Request mapping and field coverage](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_reads.py) |
+| `alerts.delete` | `alerts_delete` | Implemented | — | [Mapping, permissions, ambiguity, and no-retry tests](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_mutations.py) |
 | `portfolio.iter_positions` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
 | `transactions.list_all` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
 | `orders.list_all` | — | Omitted | — | Use explicit single-page tools; no automatic aggregation. |
@@ -599,8 +659,8 @@ represent available tools. Test links open the file containing the named test.
 The specialized tools below all call `orders.preview` or `orders.preview_change`
 with public `PreviewOrderRequest` models. New/change request mappings, general
 parity, native errors, HTTP/stdio schemas, and permissions are covered by
-[tests/test_specialized_previews.py](tests/test_specialized_previews.py), with
-synthetic expected bodies in [tests/specialized_cases.py](tests/specialized_cases.py).
+[tests/test_specialized_previews.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_specialized_previews.py), with
+synthetic expected bodies in [tests/specialized_cases.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/specialized_cases.py).
 
 | Family | New preview | Change preview | Construction / limitations |
 | --- | --- | --- | --- |
@@ -617,30 +677,30 @@ synthetic expected bodies in [tests/specialized_cases.py](tests/specialized_case
 OAuth login, verifier exchange, explicit renewal and revocation remain in the
 `etrade` CLI. Automatic client lifecycle management remains active.
 
-The cases in [tests/read_cases.py](tests/read_cases.py) enumerate every supported
+The cases in [tests/read_cases.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/read_cases.py) enumerate every supported
 read request field. `test_read_request_fields_reach_real_client` verifies their
 final HTTP paths and query parameters using the real client;
 `test_request_cases_cover_public_client_fields` checks those cases against the
 public request models. `test_preview_nested_field_coverage_and_schema` in
-[tests/test_previews.py](tests/test_previews.py) checks every public preview request
+[tests/test_previews.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_previews.py) checks every public preview request
 field, including nested models. Its protocol cases cover equity, options, verticals,
 three-leg orders, iron condors, buy-writes, mixed closing/opening legs, multiple
 order entries, and alternate sizing. Fixtures are synthetic client-valid contracts,
 not evidence that the broker accepts every combination. Mutation mapping,
 permissions, partial failures, and uncertain outcomes are covered by
-[tests/test_mutations.py](tests/test_mutations.py).
+[tests/test_mutations.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_mutations.py).
 
-The final protocol audit in [tests/test_protocol_audit.py](tests/test_protocol_audit.py)
+The final protocol audit in [tests/test_protocol_audit.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_protocol_audit.py)
 adds every read operation over actual stdio in both supported protocol modes,
 focused/full/empty catalog enforcement over both transports, explicit pagination
 through terminal empty pages, HTTP socket loss after dispatch, and killed-process
 restart without mutation replay. Its recovery reads and explicit repeated calls
 use synthetic broker responses; they do not establish actual execution or fills.
 Existing HTTP access-control, response-contract, logging, and large-response tests
-remain in [tests/test_http.py](tests/test_http.py),
-[tests/test_response_contract.py](tests/test_response_contract.py),
-[tests/test_tool_logging.py](tests/test_tool_logging.py), and
-[tests/test_large_responses.py](tests/test_large_responses.py).
+remain in [tests/test_http.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_http.py),
+[tests/test_response_contract.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_response_contract.py),
+[tests/test_tool_logging.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_tool_logging.py), and
+[tests/test_large_responses.py](https://github.com/kevinrider/etrade-mcp/blob/main/tests/test_large_responses.py).
 
 ## Development and verification
 
@@ -665,7 +725,7 @@ Artifact checks install wheel and sdist independently outside the checkout and
 exercise both transports.
 These are offline protocol and mocked brokerage tests, not authenticated broker
 validation. No release or live order is submitted by these checks.
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution and verification guidance.
+See [CONTRIBUTING.md](https://github.com/kevinrider/etrade-mcp/blob/main/CONTRIBUTING.md) for contribution and verification guidance.
 
 ## License
 

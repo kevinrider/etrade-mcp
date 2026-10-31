@@ -72,6 +72,11 @@ def main() -> None:
                 "src/etrade_mcp/py.typed",
                 "scripts/check_artifacts.py",
                 "scripts/protocol_smoke.py",
+                "scripts/check_release.py",
+                "tests/test_release.py",
+                "CLIENTS.md",
+                "CHANGELOG.md",
+                "SECURITY.md",
                 "README.md",
                 "tests/test_http.py",
                 "tests/test_cli.py",
@@ -105,6 +110,9 @@ from etrade_mcp.guidance import catalog, tool_description
 
 assert etrade_mcp.__version__ == version('etrade-mcp')
 assert metadata('etrade-mcp')['License-Expression'] == 'Apache-2.0'
+assert "Repository, https://github.com/kevinrider/etrade-mcp" in (
+    metadata('etrade-mcp').get_all('Project-URL', [])
+)
 assert files('etrade_mcp').joinpath('py.typed').is_file()
 assert len(catalog().tools) == 38
 for name in catalog().tools:

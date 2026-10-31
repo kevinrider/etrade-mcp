@@ -31,6 +31,13 @@ dependencies = [
   "uvicorn>=0.31.1,<1",
 ]
 
+[project.urls]
+Homepage = "https://github.com/kevinrider/etrade-mcp"
+Documentation = "https://github.com/kevinrider/etrade-mcp/blob/main/README.md"
+Repository = "https://github.com/kevinrider/etrade-mcp"
+Issues = "https://github.com/kevinrider/etrade-mcp/issues"
+Changelog = "https://github.com/kevinrider/etrade-mcp/blob/main/CHANGELOG.md"
+
 [project.scripts]
 etrade-mcp = "etrade_mcp.cli:app"
 
@@ -60,7 +67,7 @@ core-metadata-version = "2.4"
 include = [
   "/src", "/scripts", "/tests", "/README.md", "/LICENSE",
   "/CONTRIBUTING.md", "/Makefile", "/pyproject.toml",
-  "/uv.lock",
+  "/uv.lock", "/CHANGELOG.md", "/SECURITY.md", "/CLIENTS.md",
 ]
 
 [tool.ruff]
