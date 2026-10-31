@@ -1,4 +1,10 @@
-# etrade-mcp
+<div align="center">
+<img src="https://repository-images.githubusercontent.com/1423904536/9aac8c54-260f-4d70-812b-0fb110af0394" alt="etrade-mcp project banner" width="640">
+</div>
+
+<h1 align="center">etrade-mcp</h1>
+
+<p align="center"><strong>E*TRADE, one tool call away.</strong></p>
 
 <div align="center">
 <a href="https://github.com/kevinrider/etrade-mcp/releases"><img src="https://img.shields.io/github/release/kevinrider/etrade-mcp.svg?style=flat-square" alt="Latest Version"></a>
@@ -7,16 +13,18 @@
 <a href="https://github.com/kevinrider/etrade-mcp/blob/main/LICENSE"><img src="https://img.shields.io/github/license/kevinrider/etrade-mcp" alt="License"></a>
 </div>
 
-**E*TRADE, one tool call away.**
-
+<p align="center">
 Give your agent a brokerage toolkit: accounts, quotes, positions, option chains, and order
 management, through a typed Python MCP server backed by
-[etrade-python](https://pypi.org/project/etrade-python/).
+<a href="https://pypi.org/project/etrade-python/">etrade-python</a>.
+</p>
 
-[Documentation](https://kevinrider.github.io/etrade-mcp/) ·
-[Tool coverage](https://kevinrider.github.io/etrade-mcp/reference/tool-coverage/) ·
-[Client setup](https://kevinrider.github.io/etrade-mcp/connections/) ·
-[Changelog](https://github.com/kevinrider/etrade-mcp/blob/main/CHANGELOG.md)
+<p align="center">
+<a href="https://kevinrider.github.io/etrade-mcp/">Documentation</a> ·
+<a href="https://kevinrider.github.io/etrade-mcp/reference/tool-coverage/">Tool coverage</a> ·
+<a href="https://kevinrider.github.io/etrade-mcp/connections/">Client setup</a> ·
+<a href="https://github.com/kevinrider/etrade-mcp/blob/main/CHANGELOG.md">Changelog</a>
+</p>
 
 ## A toolkit that fits your harness
 
