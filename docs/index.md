@@ -7,7 +7,7 @@ etrade-mcp connects MCP-compatible agents and applications to the typed, async
 markets, inspect option contracts, and build precise order previews without
 embedding brokerage logic in your harness.
 
-**Current release: 0.1.0.** Install `etrade-mcp` from PyPI. Interfaces may evolve
+**Current release: 0.1.1.** Install `etrade-mcp` from PyPI. Interfaces may evolve
 before 1.0.
 
 ## Start here

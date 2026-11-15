@@ -36,7 +36,7 @@ diagnostics go to stderr. HTTP disables request access logging.
 
 The official `mcp>=2.3,<3` SDK supplies async tools, structured schemas, both
 transports, and compatibility with earlier protocol revisions without an extra
-framework. The lockfile resolves SDK 2.3.0 and client 1.1.0. Tests exercise modern
+framework. The client dependency is `etrade-python>=1.1.1,<2`. Tests exercise modern
 SDK mode (protocol `2026-07-28`) and legacy mode (`2025-11-25`);
 installed-artifact checks exercise both transports.
 This is protocol validation, not a claim of manual validation in every MCP host.

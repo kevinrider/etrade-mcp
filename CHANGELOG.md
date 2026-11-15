@@ -3,6 +3,18 @@
 Interfaces may change before 1.0; review release notes before upgrading a
 consuming harness.
 
+## 0.1.1
+
+### Changed
+
+- Require `etrade-python>=1.1.1,<2`, which requires filelock 4.2.1 or later
+  to exclude versions affected by upstream security advisories. The client uses
+  ordinary `FileLock`, not the SQLite-backed `ReadWriteLock` affected by
+  GHSA-v4x8-3wr5-3wq8.
+- Refresh locked dependencies, including certifi 2026.10.23 and filelock 4.2.10.
+- Expand the README quick start with E*TRADE API-key prerequisites and document
+  the local-model design focus and manual testing experience.
+
 ## 0.1.0
 
 ### Added

@@ -1,6 +1,6 @@
 # Tool coverage
 
-Supported client dependency: `etrade-python>=1.1,<2`. The matrix lists implemented
+Supported client dependency: `etrade-python>=1.1.1,<2`. The matrix lists implemented
 operations and intentional omissions. Test links open the file containing the named test.
 
 | Client operation | MCP tool | Status | Request model | Tests / notes |
