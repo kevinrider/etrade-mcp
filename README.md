@@ -1,8 +1,8 @@
 <div align="center">
-<img src="https://repository-images.githubusercontent.com/1423904536/9aac8c54-260f-4d70-812b-0fb110af0394" alt="etrade-mcp project banner" width="640">
+<img src="https://repository-images.githubusercontent.com/1423904536/16c62229-eb0b-48f5-b0a8-d1d5b66e6258" alt="etrade-mcp project banner" width="640">
 </div>
 
-<h1 align="center">etrade-mcp: E*TRADE, one tool call away.</h1>
+<h1 align="center">E*TRADE, one tool call away.</h1>
 
 <div align="center">
 <a href="https://github.com/kevinrider/etrade-mcp/releases"><img src="https://img.shields.io/github/release/kevinrider/etrade-mcp.svg?style=flat-square" alt="Latest Version"></a>
@@ -38,7 +38,45 @@ and `server_status`. Explicitly enabling order execution and alert deletion
 brings the complete catalog to **38 tools**. Strategy, scheduling, and portfolio
 decisions stay in your application.
 
-## Get started
+## Built with local models in mind
+
+Because the MCP server exposes personal financial data, local models are a design
+and testing focus. Manually tested with the following setup:
+
+- Qwen3.5:9b
+- Ollama
+- Open WebUI
+- NVIDIA GPU with 12 GB VRAM
+- Context windows of approximately 64k–114k tokens
+
+Testing has demonstrated multistep tool use, order previews, and recovery from
+validation errors.
+
+Focused order tools, configurable tool allowlists, concise descriptions, field
+guidance, and examples help smaller models work with the tools they need. Inlined
+input schemas improve compatibility, and structured validation errors give the
+model specific feedback when an argument needs correcting. Expose just the tools
+you use to keep the tool catalog small.
+
+Codex, Claude Code, and other compatible MCP clients are equally welcome—see the
+[client configurations](https://kevinrider.github.io/etrade-mcp/connections/).
+Results depend on the model, harness, and context settings.
+
+You can run separate MCP server processes with different tool allowlists: market
+tools for a hosted model, and account or portfolio tools for a local model. Both
+MCP server processes can share the same broker environment, credential profile, 
+and OS keyring through etrade-python.
+
+## Quick start
+
+### 1. Request E*TRADE API keys
+
+You need an E*TRADE account and a consumer key/secret for your selected broker
+environment. Follow [E*TRADE's getting-started guide](https://developer.etrade.com/getting-started)
+to request sandbox keys or apply for production keys. Sandbox is for testing;
+production keys provide access to your actual account and market data.
+
+### 2. Install
 
 Requires **Python 3.11–3.14** and [uv](https://docs.astral.sh/uv/).
 
@@ -53,6 +91,8 @@ compatible `etrade` executable? See the
 [installation guide](https://kevinrider.github.io/etrade-mcp/getting-started/)
 for that setup.
 
+### 3. Authenticate
+
 Provide `ETRADE_CONSUMER_KEY` and `ETRADE_CONSUMER_SECRET` through your protected
 process environment, using keys issued for the selected broker environment.
 Then log in interactively:
@@ -61,6 +101,11 @@ Then log in interactively:
 export ETRADE_ENVIRONMENT=sandbox
 etrade auth login --profile default
 ```
+
+Complete the browser authorization and verifier-code exchange prompted by the
+CLI. Use the same environment and profile when starting the server.
+
+### 4. Connect your agent
 
 Start local HTTP with a generated bearer credential in your private shell:
 
@@ -104,7 +149,7 @@ for permissions, client-order-ID lifecycle, cancellations, and recovery.
 Thin adapters call the public async client APIs. Both transports expose the same
 validated tools and structured responses, with native MCP error signaling.
 Brokerage behavior, OAuth, and coordinated credential storage stay in
-`etrade-python>=1.1,<2`.
+`etrade-python>=1.1.1,<2`.
 
 Offline tests cover actual MCP messages and real client serialization with mocked
 broker HTTP. Built wheel/sdist checks run outside the checkout. These checks do
