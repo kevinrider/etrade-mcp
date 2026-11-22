@@ -49,7 +49,7 @@ Strategies, scheduling, and portfolio decisions stay outside this package.
 
 ## Development and verification
 
-Python 3.11–3.14 are supported. Tests exercise real MCP stdio/loopback HTTP
+Python 3.11–3.15 are supported. Tests exercise real MCP stdio/loopback HTTP
 messages and real client serialization with synthetic broker HTTP responses.
 They do not establish authenticated broker acceptance, model reliability, or
 strategy correctness. Wheel and sdist checks install independently outside the

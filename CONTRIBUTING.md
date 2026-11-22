@@ -22,7 +22,7 @@ configuration and manual usage.
 
 uv selects an available compatible Python interpreter. To select one explicitly,
 set `UV_PYTHON`, for example `export UV_PYTHON=3.11`, before running setup and
-checks. CI validates Python 3.11–3.14.
+checks. CI validates Python 3.11–3.15.
 
 The committed `uv.lock` records development dependency versions. `--frozen` uses
 that lockfile without updating it. When changing dependencies, update

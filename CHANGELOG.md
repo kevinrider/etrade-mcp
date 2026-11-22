@@ -3,6 +3,12 @@
 Interfaces may change before 1.0; review release notes before upgrading a
 consuming harness.
 
+## Unreleased
+
+### Added
+
+- Python 3.15 support, with required CI and release checks across Python 3.11–3.15.
+
 ## 0.1.1
 
 ### Changed

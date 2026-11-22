@@ -76,7 +76,7 @@ production keys provide access to your actual account and market data.
 
 ### 2. Install
 
-Requires **Python 3.11–3.14** and [uv](https://docs.astral.sh/uv/).
+Requires **Python 3.11–3.15** and [uv](https://docs.astral.sh/uv/).
 
 ```sh
 uv tool install --with-executables-from etrade-python etrade-mcp
