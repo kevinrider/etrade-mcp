@@ -3,7 +3,7 @@
 Interfaces may change before 1.0; review release notes before upgrading a
 consuming harness.
 
-## Unreleased
+## 0.1.2
 
 ### Added
 
